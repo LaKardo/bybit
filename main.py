@@ -109,21 +109,45 @@ class TradingBot:
 
                 # Log signal
                 if signal != "NONE":
+                    # Prepare indicators dictionary
+                    indicators = {
+                        f"EMA{config.FAST_EMA}": round(price_data.iloc[-1][f'ema_{config.FAST_EMA}'], 2),
+                        f"EMA{config.SLOW_EMA}": round(price_data.iloc[-1][f'ema_{config.SLOW_EMA}'], 2),
+                        "RSI": round(price_data.iloc[-1]['rsi'], 2),
+                        "MACD": round(price_data.iloc[-1]['macd'], 4),
+                        "MACD Signal": round(price_data.iloc[-1]['macd_signal'], 4),
+                        "MACD Hist": round(price_data.iloc[-1]['macd_hist'], 4),
+                        "Volume Ratio": round(price_data.iloc[-1]['volume_ratio'], 2),
+                        "OBV Slope": round(price_data.iloc[-1]['obv_slope'], 2),
+                        "ATR": round(price_data.iloc[-1]['atr'], 2)
+                    }
+
+                    # Add pattern information if available
+                    if config.PATTERN_RECOGNITION_ENABLED:
+                        if 'bullish_pattern_strength' in price_data.iloc[-1]:
+                            indicators["Bullish Pattern Strength"] = price_data.iloc[-1]['bullish_pattern_strength']
+                        if 'bearish_pattern_strength' in price_data.iloc[-1]:
+                            indicators["Bearish Pattern Strength"] = price_data.iloc[-1]['bearish_pattern_strength']
+
+                        # Add detected patterns
+                        pattern_columns = ['hammer', 'bullish_engulfing', 'bullish_harami', 'tweezer_bottom',
+                                          'morning_star', 'three_white_soldiers', 'bullish_marubozu',
+                                          'shooting_star', 'inverted_hammer', 'bearish_engulfing', 'bearish_harami',
+                                          'tweezer_top', 'evening_star', 'three_black_crows', 'bearish_marubozu']
+
+                        detected_patterns = []
+                        for pattern in pattern_columns:
+                            if pattern in price_data.iloc[-1] and price_data.iloc[-1][pattern]:
+                                detected_patterns.append(pattern.replace('_', ' ').title())
+
+                        if detected_patterns:
+                            indicators["Detected Patterns"] = ", ".join(detected_patterns)
+
                     self.logger.signal(
                         symbol=self.symbol,
                         timeframe=self.timeframe,
                         signal_type=signal,
-                        indicators={
-                            f"EMA{config.FAST_EMA}": round(price_data.iloc[-1][f'ema_{config.FAST_EMA}'], 2),
-                            f"EMA{config.SLOW_EMA}": round(price_data.iloc[-1][f'ema_{config.SLOW_EMA}'], 2),
-                            "RSI": round(price_data.iloc[-1]['rsi'], 2),
-                            "MACD": round(price_data.iloc[-1]['macd'], 4),
-                            "MACD Signal": round(price_data.iloc[-1]['macd_signal'], 4),
-                            "MACD Hist": round(price_data.iloc[-1]['macd_hist'], 4),
-                            "Volume Ratio": round(price_data.iloc[-1]['volume_ratio'], 2),
-                            "OBV Slope": round(price_data.iloc[-1]['obv_slope'], 2),
-                            "ATR": round(price_data.iloc[-1]['atr'], 2)
-                        }
+                        indicators=indicators
                     )
 
                 # Execute trading signal

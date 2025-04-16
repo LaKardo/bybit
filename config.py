@@ -30,6 +30,11 @@ VOLUME_THRESHOLD = 1.5  # Volume must be this multiple of its MA to confirm tren
 OBV_SMOOTHING = 5  # Smoothing period for On-Balance Volume
 VOLUME_REQUIRED = True  # Whether to require volume confirmation for signals
 
+# Pattern Recognition Parameters
+PATTERN_RECOGNITION_ENABLED = True  # Whether to use candlestick pattern recognition
+PATTERN_STRENGTH_THRESHOLD = 2  # Minimum pattern strength to generate a signal
+PATTERN_CONFIRMATION_REQUIRED = True  # Whether to require pattern confirmation for signals
+
 # Risk Management
 RISK_PER_TRADE = 0.015  # 1.5% of balance per trade
 RISK_REWARD_RATIO = 2  # Risk:Reward ratio (1:2)

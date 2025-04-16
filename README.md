@@ -32,6 +32,7 @@
         <li>Volume analysis for trend strength confirmation</li>
         <li>On-Balance Volume (OBV) for volume trend direction</li>
         <li>ATR for volatility-based stops</li>
+        <li>Candlestick pattern recognition</li>
       </ul>
     </td>
   </tr>
@@ -124,6 +125,11 @@ VOLUME_MA_PERIOD = 20  # Period for volume moving average
 VOLUME_THRESHOLD = 1.5  # Volume must be this multiple of its MA to confirm trend
 OBV_SMOOTHING = 5  # Smoothing period for On-Balance Volume
 VOLUME_REQUIRED = True  # Whether to require volume confirmation for signals
+
+# Pattern Recognition Parameters
+PATTERN_RECOGNITION_ENABLED = True  # Whether to use candlestick pattern recognition
+PATTERN_STRENGTH_THRESHOLD = 2  # Minimum pattern strength to generate a signal
+PATTERN_CONFIRMATION_REQUIRED = True  # Whether to require pattern confirmation for signals
 ```
 
 ### Risk Management
@@ -170,14 +176,37 @@ python main.py
 2. RSI(14) is **below** 70 (not overbought)
 3. MACD histogram is **positive** OR MACD line crosses **above** signal line
 4. **Volume confirmation**: Current volume > 1.5x its 20-period MA AND OBV is trending up
-5. No active short position
+5. **Pattern confirmation**: Bullish candlestick pattern(s) with strength >= threshold
+6. No active short position
 
 ### Short (Sell) Signal 🔽
 1. Fast EMA(20) crosses **below** Slow EMA(50)
 2. RSI(14) is **above** 30 (not oversold)
 3. MACD histogram is **negative** OR MACD line crosses **below** signal line
 4. **Volume confirmation**: Current volume > 1.5x its 20-period MA AND OBV is trending down
-5. No active long position
+5. **Pattern confirmation**: Bearish candlestick pattern(s) with strength >= threshold
+6. No active long position
+
+### Candlestick Patterns
+
+#### Bullish Patterns
+- **Hammer**: Small body at the top with a long lower shadow
+- **Bullish Engulfing**: A bullish candle that completely engulfs the previous bearish candle
+- **Bullish Harami**: A small bullish candle contained within the body of the previous larger bearish candle
+- **Tweezer Bottom**: Two candles with the same low, first bearish, second bullish
+- **Morning Star**: Three-candle pattern with a large bearish candle, a small-bodied candle, and a large bullish candle
+- **Three White Soldiers**: Three consecutive bullish candles, each closing higher than the previous
+- **Bullish Marubozu**: A bullish candle with no or very small shadows
+
+#### Bearish Patterns
+- **Shooting Star**: Small body at the bottom with a long upper shadow
+- **Inverted Hammer**: Small body at the bottom with a long upper shadow (appears in a downtrend)
+- **Bearish Engulfing**: A bearish candle that completely engulfs the previous bullish candle
+- **Bearish Harami**: A small bearish candle contained within the body of the previous larger bullish candle
+- **Tweezer Top**: Two candles with the same high, first bullish, second bearish
+- **Evening Star**: Three-candle pattern with a large bullish candle, a small-bodied candle, and a large bearish candle
+- **Three Black Crows**: Three consecutive bearish candles, each closing lower than the previous
+- **Bearish Marubozu**: A bearish candle with no or very small shadows
 
 ### Exit Signal 🚪
 1. Stop-Loss or Take-Profit is hit
@@ -221,17 +250,18 @@ python main.py
 ## 📍 Project Structure
 
 ```
-├── main.py              # Main entry point and trading loop
-├── config.py            # Configuration parameters
-├── bybit_client.py      # API client for Bybit
-├── strategy.py          # Trading strategy implementation
-├── risk_manager.py      # Risk management and position sizing
-├── order_manager.py     # Order placement and management
-├── logger.py            # Logging functionality
-├── notifier.py          # Telegram notification system
-├── utils.py             # Utility functions
-├── requirements.txt     # Required packages
-└── README.md            # Documentation
+├── main.py                # Main entry point and trading loop
+├── config.py              # Configuration parameters
+├── bybit_client.py        # API client for Bybit
+├── strategy.py            # Trading strategy implementation
+├── pattern_recognition.py # Candlestick pattern recognition
+├── risk_manager.py        # Risk management and position sizing
+├── order_manager.py       # Order placement and management
+├── logger.py              # Logging functionality
+├── notifier.py            # Telegram notification system
+├── utils.py               # Utility functions
+├── requirements.txt       # Required packages
+└── README.md              # Documentation
 ```
 
 ## 🔥 Future Improvements
@@ -241,7 +271,7 @@ python main.py
 
 ### Advanced Strategy Enhancements
 - **Multi-Timeframe Analysis**: Implement signal confirmation across multiple timeframes
-- **Pattern Recognition**: Implement candlestick pattern recognition
+- **Advanced Pattern Recognition**: Implement more complex chart patterns (Head & Shoulders, Double Top/Bottom, etc.)
 - **Machine Learning Integration**: Add predictive models for enhanced signal generation
 
 ### Risk Management Improvements

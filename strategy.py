@@ -7,6 +7,7 @@ import pandas as pd
 import numpy as np
 import pandas_ta as ta
 import config
+from pattern_recognition import PatternRecognition
 
 class Strategy:
     """
@@ -38,6 +39,14 @@ class Strategy:
         self.volume_threshold = config.VOLUME_THRESHOLD
         self.obv_smoothing = config.OBV_SMOOTHING
         self.volume_required = config.VOLUME_REQUIRED
+
+        # Pattern recognition parameters
+        self.pattern_recognition_enabled = config.PATTERN_RECOGNITION_ENABLED
+        self.pattern_strength_threshold = config.PATTERN_STRENGTH_THRESHOLD
+        self.pattern_confirmation_required = config.PATTERN_CONFIRMATION_REQUIRED
+
+        # Initialize pattern recognition module
+        self.pattern_recognition = PatternRecognition(logger=self.logger)
 
         if self.logger:
             self.logger.info("Strategy initialized")
@@ -91,6 +100,12 @@ class Strategy:
 
             # Drop NaN values
             df = df.dropna()
+
+            # Detect candlestick patterns if enabled
+            if self.pattern_recognition_enabled:
+                df = self.pattern_recognition.detect_patterns(df)
+                if self.logger:
+                    self.logger.debug("Candlestick patterns detected")
 
             if self.logger:
                 self.logger.debug("Indicators calculated successfully")
@@ -162,21 +177,51 @@ class Strategy:
             rsi_not_oversold = rsi_current > self.rsi_oversold
             macd_negative = macd_hist_current < 0 or macd_crossover_down
 
-            # Generate signal with volume confirmation if required
+            # Check for pattern recognition signals if enabled
+            pattern_confirms_bullish = False
+            pattern_confirms_bearish = False
+
+            if self.pattern_recognition_enabled and 'bullish_pattern_strength' in current and 'bearish_pattern_strength' in current:
+                bullish_pattern_strength = current['bullish_pattern_strength']
+                bearish_pattern_strength = current['bearish_pattern_strength']
+
+                pattern_confirms_bullish = bullish_pattern_strength >= self.pattern_strength_threshold
+                pattern_confirms_bearish = bearish_pattern_strength >= self.pattern_strength_threshold
+
+                if self.logger:
+                    self.logger.debug(f"Pattern strengths - Bullish: {bullish_pattern_strength}, Bearish: {bearish_pattern_strength}")
+
+            # Generate signal with volume and pattern confirmation if required
             if ema_crossover_up and rsi_not_overbought and macd_positive:
-                if not self.volume_required or volume_confirms_bullish:
+                # Check volume confirmation
+                volume_confirmed = not self.volume_required or volume_confirms_bullish
+                # Check pattern confirmation
+                pattern_confirmed = not self.pattern_confirmation_required or pattern_confirms_bullish
+
+                if volume_confirmed and pattern_confirmed:
                     signal = "LONG"
                 else:
-                    signal = "NONE"  # Volume doesn't confirm bullish signal
+                    signal = "NONE"  # Confirmation failed
                     if self.logger:
-                        self.logger.debug("LONG signal rejected: Insufficient volume confirmation")
+                        if not volume_confirmed:
+                            self.logger.debug("LONG signal rejected: Insufficient volume confirmation")
+                        if not pattern_confirmed:
+                            self.logger.debug("LONG signal rejected: Insufficient pattern confirmation")
             elif ema_crossover_down and rsi_not_oversold and macd_negative:
-                if not self.volume_required or volume_confirms_bearish:
+                # Check volume confirmation
+                volume_confirmed = not self.volume_required or volume_confirms_bearish
+                # Check pattern confirmation
+                pattern_confirmed = not self.pattern_confirmation_required or pattern_confirms_bearish
+
+                if volume_confirmed and pattern_confirmed:
                     signal = "SHORT"
                 else:
-                    signal = "NONE"  # Volume doesn't confirm bearish signal
+                    signal = "NONE"  # Confirmation failed
                     if self.logger:
-                        self.logger.debug("SHORT signal rejected: Insufficient volume confirmation")
+                        if not volume_confirmed:
+                            self.logger.debug("SHORT signal rejected: Insufficient volume confirmation")
+                        if not pattern_confirmed:
+                            self.logger.debug("SHORT signal rejected: Insufficient pattern confirmation")
             else:
                 signal = "NONE"
 
@@ -193,10 +238,46 @@ class Strategy:
                     "OBV Slope": round(obv_slope, 2),
                     "ATR": round(current['atr'], 2)
                 }
+
+                # Add pattern information if enabled
+                if self.pattern_recognition_enabled and 'bullish_pattern_strength' in current and 'bearish_pattern_strength' in current:
+                    indicators["Bullish Pattern Strength"] = current['bullish_pattern_strength']
+                    indicators["Bearish Pattern Strength"] = current['bearish_pattern_strength']
+
+                    # Add detected patterns
+                    bullish_patterns = []
+                    bearish_patterns = []
+
+                    # Check for bullish patterns
+                    pattern_columns = ['hammer', 'bullish_engulfing', 'bullish_harami', 'tweezer_bottom',
+                                      'morning_star', 'three_white_soldiers', 'bullish_marubozu']
+                    for pattern in pattern_columns:
+                        if pattern in current and current[pattern]:
+                            bullish_patterns.append(pattern.replace('_', ' ').title())
+
+                    # Check for bearish patterns
+                    pattern_columns = ['shooting_star', 'inverted_hammer', 'bearish_engulfing', 'bearish_harami',
+                                      'tweezer_top', 'evening_star', 'three_black_crows', 'bearish_marubozu']
+                    for pattern in pattern_columns:
+                        if pattern in current and current[pattern]:
+                            bearish_patterns.append(pattern.replace('_', ' ').title())
+
+                    if bullish_patterns:
+                        indicators["Bullish Patterns"] = ", ".join(bullish_patterns)
+                    if bearish_patterns:
+                        indicators["Bearish Patterns"] = ", ".join(bearish_patterns)
+
                 self.logger.debug(f"Current indicators: {indicators}")
 
                 if signal != "NONE":
-                    self.logger.info(f"Generated signal: {signal} (Volume confirms: {volume_confirms_bullish if signal == 'LONG' else volume_confirms_bearish})")
+                    confirmation_info = []
+                    if volume_confirms_bullish if signal == "LONG" else volume_confirms_bearish:
+                        confirmation_info.append("Volume confirms")
+                    if pattern_confirms_bullish if signal == "LONG" else pattern_confirms_bearish:
+                        confirmation_info.append("Pattern confirms")
+
+                    confirmation_str = ", ".join(confirmation_info) if confirmation_info else "No confirmations"
+                    self.logger.info(f"Generated signal: {signal} ({confirmation_str})")
 
             return signal
 
