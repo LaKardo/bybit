@@ -144,10 +144,6 @@ python main.py
 
 </div>
 
-<div align="center">
-<img src="https://i.imgur.com/JGEfXnS.png" alt="Bot Workflow" width="600">
-</div>
-
 ### What the Bot Does:
 
 1. **Initialization**: Loads configuration and initializes all components
@@ -160,10 +156,6 @@ python main.py
 8. **Reporting**: Logs all activities and sends notifications via Telegram
 
 ## 💸 Trading Strategy
-
-<div align="center">
-<img src="https://i.imgur.com/Wd0yPEP.png" alt="Trading Strategy" width="700">
-</div>
 
 ### Long (Buy) Signal 🔼
 1. Fast EMA(20) crosses **above** Slow EMA(50)
@@ -182,10 +174,6 @@ python main.py
 2. Opposite signal appears
 
 ## 💰 Risk Management
-
-<div align="center">
-<img src="https://i.imgur.com/Ql3ReHi.png" alt="Risk Management" width="600">
-</div>
 
 - **Risk per trade**: 1.5% of available balance
 - **Stop-Loss**: Based on ATR (Average True Range)
