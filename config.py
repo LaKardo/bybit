@@ -24,6 +24,12 @@ MACD_SLOW = 26
 MACD_SIGNAL = 9
 ATR_PERIOD = 14
 
+# Volume Filter Parameters
+VOLUME_MA_PERIOD = 20  # Period for volume moving average
+VOLUME_THRESHOLD = 1.5  # Volume must be this multiple of its MA to confirm trend
+OBV_SMOOTHING = 5  # Smoothing period for On-Balance Volume
+VOLUME_REQUIRED = True  # Whether to require volume confirmation for signals
+
 # Risk Management
 RISK_PER_TRADE = 0.015  # 1.5% of balance per trade
 RISK_REWARD_RATIO = 2  # Risk:Reward ratio (1:2)
