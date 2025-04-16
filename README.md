@@ -145,7 +145,7 @@ python main.py
 </div>
 
 <div align="center">
-<img src="https://mermaid.ink/img/pako:eNp1ksFuwjAMhl_F8qkgwYGDpVWlwWACCWm7TLtEbmJYRJpUiQsM0d59KYyNbdqp-f3_sf3HGTBVEjGCXG1VZbTVxJXZkFKlNlRoLpW4Uc6QMFwbR9JCrXgJL8Oj9-Nh8Oj9Gg6GXvAcBEEQDnzfD4fBKBj5wWgcjMPR2B-Hn4Ow_-S9BuPwJQiG_tPzZzgYvfXgXlvKSVdQkbZcLKlwZLRQpLZcLUhZrpWrSRXbXFLBxYYrKrLcOlLFjnJb5Vy4Qm1JVrYgVRZcLMjYrCRZFGRMXpLKc1I2L0lnBRlXlKSKkpQrS9JFRcaWFemyImOrmnRVk7F1TXpVk3FNTXpdk2mamnTTkHFtQ7ppybi2Jd22ZFzXkt60ZPquI7PpyGy7jvSmI-O6jvS2I9N3HZm-68j0XUem7zoy_QcZKHWkdx2Zvv8HGxvKSG-5-gfGvMGK?type=png" alt="Bot Workflow" width="600">
+<img src="https://i.imgur.com/JGEfXnS.png" alt="Bot Workflow" width="600">
 </div>
 
 ### What the Bot Does:
@@ -162,7 +162,7 @@ python main.py
 ## 💸 Trading Strategy
 
 <div align="center">
-<img src="https://mermaid.ink/img/pako:eNp1kk1vgzAMhv-K5VMnFQ4cKK0qDcYmkNC2y7RL5CaGRaRJlbjAEO2_L4Wxj207Nb__x_YbZ8BUScQIcrVVldFWE1dmQ0qV2lChuVTiRjlDwnBtHEkLteIlvAyP3o-HwaP3azgYesFzEARBOPB9PxwGo2DkB6NxMA5HY38cfg7C_pP3GozDlyAY-k_Pn-Fg9NaDe20pJ11BRdpysaTCkdFCkdpytSBluVauJlVsc0kFFxuuqMhy60gVO8ptlXPhCrUlWdmCVFlwsSBjs5JkUZAxeUkqz0nZvCSdFWRcUZIqSlKuLEkXFRlbVqTLioytapJVTcbWNelVTcY1Nen1_7Oa9KYh49qGdNOScW1Lum3JuK4lvWnJ9F1HZtOR2XYd6U1HxnUd6W1Hpu86Mn3Xkem7jkzfdWT6D_5Q6kjvOjJ9_w82NpSR3nL1D8a8wYo?type=png" alt="Trading Strategy" width="700">
+<img src="https://i.imgur.com/Wd0yPEP.png" alt="Trading Strategy" width="700">
 </div>
 
 ### Long (Buy) Signal 🔼
@@ -184,7 +184,7 @@ python main.py
 ## 💰 Risk Management
 
 <div align="center">
-<img src="https://mermaid.ink/img/pako:eNptkstuwjAQRX9l5FVBggULSqtKg7EJJLTtMu0iGnsaLOI4sh1oEf33OoG-2M2d45m5M5kAUyURPcjVVlVGW01cmQ0pVWpDheZSiRvlDAnDtXEkLdSKl_A8PHo_HgaP3q_hYOgFz0EQBOHAd-5wGIyCkR-MxsE4HI39cfg5CPtP3mswDl-CYOg_PX-Gg9FbD-61pZx0BRVpy8WSCkdGC0Vqy9WClOVauZpUsc0lFVxsuKIiy60jVewot1XOhSvUlmRlC1JlwcWCjM1KkkVBxuQlqTwnZfOSdFaQcUVJqihJubIkXVRkbFmRLisytqpJVjUZW9ekVzUZ19Sk1zWZpqlJNw0Z1zak6-9pSbctGde1pDctmb7ryGw6MtuuI73pyLiuI73tyPRdR6bvOjJ915Hpu45M_0EGSh3pXUem7__BxoYy0luu_gHGvMGK?type=png" alt="Risk Management" width="600">
+<img src="https://i.imgur.com/Ql3ReHi.png" alt="Risk Management" width="600">
 </div>
 
 - **Risk per trade**: 1.5% of available balance
