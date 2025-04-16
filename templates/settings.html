@@ -1,0 +1,737 @@
+{% extends "base.html" %}
+{% block title %}Settings - Bybit Trading Bot{% endblock %}
+{% block extra_css %}
+<style>
+    /* Settings page specific styles */
+    .setting-card {
+        background-color: var(--card-bg);
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        border: 1px solid var(--border-color);
+        height: 100%;
+    }
+    .setting-card-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid var(--border-color);
+        color: var(--primary-color);
+    }
+    .form-label {
+        font-weight: 500;
+        margin-bottom: 8px;
+    }
+    .form-text {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        margin-top: 5px;
+    }
+    .form-check-label {
+        font-weight: 500;
+    }
+    .form-switch .form-check-input {
+        width: 2.5em;
+        height: 1.25em;
+    }
+    .form-switch .form-check-input:checked {
+        background-color: var(--success-color);
+        border-color: var(--success-color);
+    }
+    .nav-tabs .nav-link {
+        padding: 0.75rem 1.25rem;
+        font-weight: 500;
+        border-radius: 8px 8px 0 0;
+    }
+    .nav-tabs .nav-link.active {
+        font-weight: 600;
+        color: var(--primary-color);
+        border-color: var(--border-color) var(--border-color) var(--card-bg);
+    }
+    .tab-content {
+        padding-top: 1.5rem;
+    }
+    /* Tooltip styling */
+    [data-bs-toggle="tooltip"] {
+        cursor: help;
+    }
+    /* Range input styling */
+    input[type="range"] {
+        width: 100%;
+        height: 8px;
+        border-radius: 4px;
+        background-color: var(--border-color);
+        outline: none;
+        -webkit-appearance: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background-color: var(--primary-color);
+        cursor: pointer;
+        border: none;
+    }
+    /* Preset buttons */
+    .btn-preset {
+        border-radius: 12px;
+        padding: 12px 16px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        border: 1px solid var(--border-color);
+        background-color: var(--card-bg);
+        color: var(--text-color);
+        text-align: left;
+        position: relative;
+        overflow: hidden;
+    }
+    .btn-preset:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+        border-color: var(--primary-color);
+    }
+    .btn-preset::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 0;
+        height: 100%;
+        background: linear-gradient(90deg, rgba(var(--primary-color-rgb), 0.1), transparent);
+        transition: width 0.3s ease;
+    }
+    .btn-preset:hover::after {
+        width: 100%;
+    }
+    .preset-buttons {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    #preset-conservative {
+        border-left: 4px solid #28a745;
+    }
+    #preset-balanced {
+        border-left: 4px solid #0d6efd;
+    }
+    #preset-aggressive {
+        border-left: 4px solid #dc3545;
+    }
+    /* Import/Export file input */
+    .custom-file-input {
+        position: relative;
+        z-index: 2;
+        width: 100%;
+        height: calc(1.5em + 0.75rem + 2px);
+        margin: 0;
+        opacity: 0;
+    }
+    .custom-file-label {
+        position: absolute;
+        top: 0;
+        right: 0;
+        left: 0;
+        z-index: 1;
+        height: calc(1.5em + 0.75rem + 2px);
+        padding: 0.375rem 0.75rem;
+        font-weight: 400;
+        line-height: 1.5;
+        color: var(--text-color);
+        background-color: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 0.25rem;
+    }
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .setting-card {
+            margin-bottom: 20px;
+        }
+        .nav-tabs .nav-link {
+            padding: 0.5rem 0.75rem;
+            font-size: 0.9rem;
+        }
+    }
+</style>
+{% endblock %}
+{% block content %}
+<div class="dashboard-header d-flex align-items-center justify-content-between">
+    <div>
+        <h1 class="dashboard-title">Settings</h1>
+        <span class="dashboard-subtitle">Configure your trading bot</span>
+    </div>
+    <div class="dashboard-actions">
+        <button type="button" class="btn btn-outline-primary" id="back-to-dashboard">
+            <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
+        </button>
+    </div>
+</div>
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card fade-in-element">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-cog me-2"></i>Bot Settings</h5>
+                <div>
+                    <button type="button" class="btn btn-sm btn-outline-primary me-2" id="import-settings" data-bs-toggle="tooltip" title="Import settings from a file">
+                        <i class="fas fa-file-import me-1"></i>Import
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="export-settings" data-bs-toggle="tooltip" title="Export settings to a file">
+                        <i class="fas fa-file-export me-1"></i>Export
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <form id="settings-form">
+                    <ul class="nav nav-tabs mb-4" id="settings-tabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="general-tab" data-bs-toggle="tab" data-bs-target="#general" type="button" role="tab" aria-controls="general" aria-selected="true">
+                                <i class="fas fa-sliders-h me-2"></i>General
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="strategy-tab" data-bs-toggle="tab" data-bs-target="#strategy" type="button" role="tab" aria-controls="strategy" aria-selected="false">
+                                <i class="fas fa-chart-line me-2"></i>Strategy
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="risk-tab" data-bs-toggle="tab" data-bs-target="#risk" type="button" role="tab" aria-controls="risk" aria-selected="false">
+                                <i class="fas fa-shield-alt me-2"></i>Risk Management
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="advanced-tab" data-bs-toggle="tab" data-bs-target="#advanced" type="button" role="tab" aria-controls="advanced" aria-selected="false">
+                                <i class="fas fa-cogs me-2"></i>Advanced
+                            </button>
+                        </li>
+                    </ul>
+                    <div class="tab-content" id="settings-tabs-content">
+                        <div class="tab-pane fade show active" id="general" role="tabpanel" aria-labelledby="general-tab">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="setting-card fade-in-element">
+                                        <h5 class="setting-card-title"><i class="fas fa-exchange-alt me-2"></i>Trading Pair</h5>
+                                        <div class="mb-3">
+                                            <label for="symbol" class="form-label d-flex align-items-center">
+                                                Symbol
+                                                <i class="fas fa-info-circle ms-2" data-bs-toggle="tooltip" title="The cryptocurrency pair you want to trade"></i>
+                                            </label>
+                                            <div class="input-group">
+                                                <input type="text" class="form-control" id="symbol" name="symbol" value="{{ config.SYMBOL }}" placeholder="Enter trading pair">
+                                                <button class="btn btn-outline-primary" type="button" id="symbol-search" data-bs-toggle="tooltip" title="Search for available trading pairs">
+                                                    <i class="fas fa-search"></i>
+                                                </button>
+                                            </div>
+                                            <div class="form-text">The trading pair to trade (e.g., BTCUSDT)</div>
+                                        </div>
+                                    </div>
+                                    <div class="setting-card mt-4 fade-in-element">
+                                        <h5 class="setting-card-title"><i class="fas fa-clock me-2"></i>Timeframe</h5>
+                                        <div class="mb-3">
+                                            <label for="timeframe" class="form-label d-flex align-items-center">
+                                                Analysis Timeframe
+                                                <i class="fas fa-info-circle ms-2" data-bs-toggle="tooltip" title="The time interval for each candlestick in your analysis"></i>
+                                            </label>
+                                            <select class="form-select" id="timeframe" name="timeframe">
+                                                <optgroup label="Short-term">
+                                                    <option value="1" {% if config.TIMEFRAME == "1" %}selected{% endif %}>1 Minute</option>
+                                                    <option value="3" {% if config.TIMEFRAME == "3" %}selected{% endif %}>3 Minutes</option>
+                                                    <option value="5" {% if config.TIMEFRAME == "5" %}selected{% endif %}>5 Minutes</option>
+                                                    <option value="15" {% if config.TIMEFRAME == "15" %}selected{% endif %}>15 Minutes</option>
+                                                    <option value="30" {% if config.TIMEFRAME == "30" %}selected{% endif %}>30 Minutes</option>
+                                                </optgroup>
+                                                <optgroup label="Medium-term">
+                                                    <option value="60" {% if config.TIMEFRAME == "60" %}selected{% endif %}>1 Hour</option>
+                                                    <option value="120" {% if config.TIMEFRAME == "120" %}selected{% endif %}>2 Hours</option>
+                                                    <option value="240" {% if config.TIMEFRAME == "240" %}selected{% endif %}>4 Hours</option>
+                                                    <option value="360" {% if config.TIMEFRAME == "360" %}selected{% endif %}>6 Hours</option>
+                                                    <option value="720" {% if config.TIMEFRAME == "720" %}selected{% endif %}>12 Hours</option>
+                                                </optgroup>
+                                                <optgroup label="Long-term">
+                                                    <option value="D" {% if config.TIMEFRAME == "D" %}selected{% endif %}>1 Day</option>
+                                                    <option value="W" {% if config.TIMEFRAME == "W" %}selected{% endif %}>1 Week</option>
+                                                    <option value="M" {% if config.TIMEFRAME == "M" %}selected{% endif %}>1 Month</option>
+                                                </optgroup>
+                                            </select>
+                                            <div class="form-text">The timeframe to use for analysis (Bybit API V5 format)</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="setting-card fade-in-element">
+                                        <h5 class="setting-card-title"><i class="fas fa-balance-scale me-2"></i>Trading Mode</h5>
+                                        <div class="mb-3">
+                                            <label for="leverage" class="form-label d-flex align-items-center">
+                                                Leverage
+                                                <i class="fas fa-info-circle ms-2" data-bs-toggle="tooltip" title="Multiplier for your position size. Higher leverage means higher risk."></i>
+                                            </label>
+                                            <div class="input-group">
+                                                <input type="number" class="form-control" id="leverage" name="leverage" value="{{ config.LEVERAGE }}" min="1" max="100">
+                                                <span class="input-group-text">×</span>
+                                            </div>
+                                            <div class="form-text">Leverage to use (1-100)</div>
+                                        </div>
+                                        <div class="mb-3 form-check form-switch">
+                                            <input type="checkbox" class="form-check-input" id="dry_run" name="dry_run" {% if config.DRY_RUN %}checked{% endif %}>
+                                            <label class="form-check-label" for="dry_run">Dry Run Mode</label>
+                                            <div class="form-text">If enabled, the bot will not place real orders</div>
+                                        </div>
+                                        <div class="alert alert-info mt-3">
+                                            <i class="fas fa-info-circle me-2"></i>
+                                            <strong>Tip:</strong> Start with lower leverage (1-5x) until you're confident in your strategy's performance.
+                                        </div>
+                                    </div>
+                                    <div class="setting-card mt-4 fade-in-element">
+                                        <h5 class="setting-card-title"><i class="fas fa-save me-2"></i>Presets</h5>
+                                        <div class="mb-3">
+                                            <label class="form-label d-flex align-items-center">
+                                                Load Preset Configuration
+                                                <i class="fas fa-info-circle ms-2" data-bs-toggle="tooltip" title="Quick configurations for different trading styles"></i>
+                                            </label>
+                                            <div class="preset-buttons">
+                                                <button type="button" class="btn btn-preset mb-2 w-100" id="preset-conservative" data-bs-toggle="tooltip" title="Lower risk, smaller position sizes, wider stop losses">
+                                                    <i class="fas fa-shield-alt me-2"></i>Conservative
+                                                    <small class="d-block mt-1 text-muted">Lower risk, higher safety</small>
+                                                </button>
+                                                <button type="button" class="btn btn-preset mb-2 w-100" id="preset-balanced" data-bs-toggle="tooltip" title="Balanced risk-reward approach">
+                                                    <i class="fas fa-balance-scale me-2"></i>Balanced
+                                                    <small class="d-block mt-1 text-muted">Moderate risk-reward</small>
+                                                </button>
+                                                <button type="button" class="btn btn-preset mb-2 w-100" id="preset-aggressive" data-bs-toggle="tooltip" title="Higher risk, larger position sizes, tighter stop losses">
+                                                    <i class="fas fa-bolt me-2"></i>Aggressive
+                                                    <small class="d-block mt-1 text-muted">Higher risk, higher potential returns</small>
+                                                </button>
+                                            </div>
+                                            <div class="form-text mt-2">Load predefined settings (will override current settings)</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="strategy" role="tabpanel" aria-labelledby="strategy-tab">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="setting-card">
+                                        <h5 class="setting-card-title"><i class="fas fa-chart-area me-2"></i>Moving Averages</h5>
+                                        <div class="mb-3">
+                                            <label for="fast_ema" class="form-label">Fast EMA Period</label>
+                                            <input type="number" class="form-control" id="fast_ema" name="fast_ema" value="{{ config.FAST_EMA }}" min="5" max="50">
+                                            <div class="form-text">Period for the fast EMA (recommended: 9-12)</div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="slow_ema" class="form-label">Slow EMA Period</label>
+                                            <input type="number" class="form-control" id="slow_ema" name="slow_ema" value="{{ config.SLOW_EMA }}" min="10" max="200">
+                                            <div class="form-text">Period for the slow EMA (recommended: 21-26)</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="setting-card">
+                                        <h5 class="setting-card-title"><i class="fas fa-chart-line me-2"></i>RSI Settings</h5>
+                                        <div class="mb-3">
+                                            <label for="rsi_period" class="form-label">RSI Period</label>
+                                            <input type="number" class="form-control" id="rsi_period" name="rsi_period" value="{{ config.RSI_PERIOD }}" min="5" max="30">
+                                            <div class="form-text">Period for the RSI (recommended: 14)</div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="rsi_overbought" class="form-label">RSI Overbought Level</label>
+                                            <input type="number" class="form-control" id="rsi_overbought" name="rsi_overbought" value="{{ config.RSI_OVERBOUGHT }}" min="50" max="90">
+                                            <div class="form-text">RSI level considered overbought (recommended: 70)</div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="rsi_oversold" class="form-label">RSI Oversold Level</label>
+                                            <input type="number" class="form-control" id="rsi_oversold" name="rsi_oversold" value="{{ config.RSI_OVERSOLD }}" min="10" max="50">
+                                            <div class="form-text">RSI level considered oversold (recommended: 30)</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="risk" role="tabpanel" aria-labelledby="risk-tab">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="setting-card">
+                                        <h5 class="setting-card-title"><i class="fas fa-percentage me-2"></i>Position Sizing</h5>
+                                        <div class="mb-3">
+                                            <label for="risk_per_trade" class="form-label">Risk Per Trade</label>
+                                            <div class="input-group">
+                                                <input type="number" class="form-control" id="risk_per_trade" name="risk_per_trade" value="{{ config.RISK_PER_TRADE * 100 }}" min="0.1" max="10" step="0.1">
+                                                <span class="input-group-text">%</span>
+                                            </div>
+                                            <div class="form-text">Percentage of balance to risk per trade (recommended: 1-2%)</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="setting-card">
+                                        <h5 class="setting-card-title"><i class="fas fa-shield-alt me-2"></i>Stop Loss & Take Profit</h5>
+                                        <div class="mb-3">
+                                            <label for="risk_reward_ratio" class="form-label">Risk:Reward Ratio</label>
+                                            <input type="number" class="form-control" id="risk_reward_ratio" name="risk_reward_ratio" value="{{ config.RISK_REWARD_RATIO }}" min="0.5" max="5" step="0.1">
+                                            <div class="form-text">Risk:Reward ratio (e.g., 2 means TP is 2x the distance of SL)</div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="sl_atr_multiplier" class="form-label">Stop Loss ATR Multiplier</label>
+                                            <input type="number" class="form-control" id="sl_atr_multiplier" name="sl_atr_multiplier" value="{{ config.SL_ATR_MULTIPLIER }}" min="0.5" max="5" step="0.1">
+                                            <div class="form-text">Stop Loss = Entry Price +/- (ATR * Multiplier)</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="advanced" role="tabpanel" aria-labelledby="advanced-tab">
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <div class="setting-card">
+                                        <h5 class="setting-card-title"><i class="fas fa-layer-group me-2"></i>Advanced Settings</h5>
+                                        <div class="alert alert-info">
+                                            <i class="fas fa-info-circle me-2"></i>
+                                            <strong>Note:</strong> Multi-timeframe analysis has been removed from this version.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row mt-5">
+                        <div class="col-md-12">
+                            <div class="card fade-in-element">
+                                <div class="card-body d-flex justify-content-between align-items-center">
+                                    <div class="form-actions-left">
+                                        <button type="reset" class="btn btn-outline-secondary me-2" data-bs-toggle="tooltip" title="Reset all form fields to their original values">
+                                            <i class="fas fa-undo me-1"></i>Reset Form
+                                        </button>
+                                    </div>
+                                    <div class="form-actions-right">
+                                        <button type="submit" class="btn btn-primary btn-lg" data-bs-toggle="tooltip" title="Save your settings">
+                                            <i class="fas fa-save me-1"></i>Save Settings
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Initialize tooltips
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.map(function(tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+        // Back to dashboard button
+        $('#back-to-dashboard').click(function() {
+            window.location.href = '/';
+        });
+        // Settings form submission
+        $('#settings-form').submit(function(e) {
+            e.preventDefault();
+            // Show loading spinner
+            showLoading();
+            // Get form data
+            const formData = {
+                symbol: $('#symbol').val(),
+                timeframe: $('#timeframe').val(),
+                leverage: parseInt($('#leverage').val()),
+                dry_run: $('#dry_run').is(':checked'),
+                risk_per_trade: parseFloat($('#risk_per_trade').val()) / 100,
+                risk_reward_ratio: parseFloat($('#risk_reward_ratio').val()),
+                sl_atr_multiplier: parseFloat($('#sl_atr_multiplier').val()),
+                fast_ema: parseInt($('#fast_ema').val()),
+                slow_ema: parseInt($('#slow_ema').val()),
+                rsi_period: parseInt($('#rsi_period').val()),
+                rsi_overbought: parseInt($('#rsi_overbought').val()),
+                rsi_oversold: parseInt($('#rsi_oversold').val()),
+                // Multi-timeframe analysis and volume analysis have been removed
+            };
+            // Validate form data
+            let isValid = true;
+            let errorMessage = '';
+            if (!formData.symbol) {
+                isValid = false;
+                errorMessage = 'Symbol is required';
+                $('#symbol').addClass('is-invalid');
+            }
+            if (formData.leverage < 1 || formData.leverage > 100) {
+                isValid = false;
+                errorMessage = 'Leverage must be between 1 and 100';
+                $('#leverage').addClass('is-invalid');
+            }
+            if (formData.risk_per_trade < 0.001 || formData.risk_per_trade > 0.1) {
+                isValid = false;
+                errorMessage = 'Risk per trade must be between 0.1% and 10%';
+                $('#risk_per_trade').addClass('is-invalid');
+            }
+            if (!isValid) {
+                hideLoading();
+                showToast(errorMessage, 'error');
+                return;
+            }
+            // Send settings to server
+            $.ajax({
+                url: '/api/update_settings',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(formData),
+                success: function(response) {
+                    hideLoading();
+                    if (response.status === 'OK') {
+                        // Show success message
+                        showToast('Settings saved successfully', 'success');
+                        // Remove any validation errors
+                        $('.is-invalid').removeClass('is-invalid');
+                    } else {
+                        // Show error message
+                        showToast('Failed to save settings: ' + response.message, 'error');
+                    }
+                },
+                error: function() {
+                    hideLoading();
+                    // Show error message
+                    showToast('Failed to save settings: Server error', 'error');
+                }
+            });
+        });
+        // Symbol search button
+        $('#symbol-search').click(function() {
+            // Open a modal with popular symbols
+            const popularSymbols = [
+                'BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'XRPUSDT',
+                'ADAUSDT', 'DOGEUSDT', 'DOTUSDT', 'LINKUSDT', 'LTCUSDT'
+            ];
+            let symbolsHtml = '';
+            popularSymbols.forEach(symbol => {
+                symbolsHtml += `<button type="button" class="btn btn-outline-primary m-1 symbol-btn" data-symbol="${symbol}">${symbol}</button>`;
+            });
+            const modalHtml = `
+                <div class="modal fade" id="symbol-modal" tabindex="-1" aria-labelledby="symbol-modal-label" aria-hidden="true">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="symbol-modal-label">Select Trading Pair</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="mb-3">
+                                    <label class="form-label">Popular Symbols</label>
+                                    <div class="d-flex flex-wrap">
+                                        ${symbolsHtml}
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="custom-symbol" class="form-label">Custom Symbol</label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="custom-symbol" placeholder="Enter symbol (e.g., BTCUSDT)">
+                                        <button class="btn btn-primary" type="button" id="use-custom-symbol">Use</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            // Remove any existing modal
+            $('#symbol-modal').remove();
+            // Add modal to body
+            $('body').append(modalHtml);
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('symbol-modal'));
+            modal.show();
+            // Handle symbol button clicks
+            $('.symbol-btn').click(function() {
+                const symbol = $(this).data('symbol');
+                $('#symbol').val(symbol);
+                modal.hide();
+            });
+            // Handle custom symbol
+            $('#use-custom-symbol').click(function() {
+                const symbol = $('#custom-symbol').val().toUpperCase();
+                if (symbol) {
+                    $('#symbol').val(symbol);
+                    modal.hide();
+                }
+            });
+        });
+        // Preset buttons
+        $('#preset-conservative').click(function() {
+            if (confirm('Load conservative preset? This will override your current settings.')) {
+                // Conservative settings
+                $('#risk_per_trade').val('1.0');
+                $('#risk_reward_ratio').val('2.0');
+                $('#sl_atr_multiplier').val('2.0');
+                $('#fast_ema').val('12');
+                $('#slow_ema').val('26');
+                $('#rsi_period').val('14');
+                $('#rsi_overbought').val('70');
+                $('#rsi_oversold').val('30');
+                // Multi-timeframe analysis has been removed
+                showToast('Conservative preset loaded', 'info');
+            }
+        });
+        $('#preset-balanced').click(function() {
+            if (confirm('Load balanced preset? This will override your current settings.')) {
+                // Balanced settings
+                $('#risk_per_trade').val('1.5');
+                $('#risk_reward_ratio').val('1.5');
+                $('#sl_atr_multiplier').val('1.5');
+                $('#fast_ema').val('9');
+                $('#slow_ema').val('21');
+                $('#rsi_period').val('14');
+                $('#rsi_overbought').val('65');
+                $('#rsi_oversold').val('35');
+                // Multi-timeframe analysis has been removed
+                showToast('Balanced preset loaded', 'info');
+            }
+        });
+        $('#preset-aggressive').click(function() {
+            if (confirm('Load aggressive preset? This will override your current settings.')) {
+                // Aggressive settings
+                $('#risk_per_trade').val('2.0');
+                $('#risk_reward_ratio').val('1.0');
+                $('#sl_atr_multiplier').val('1.0');
+                $('#fast_ema').val('8');
+                $('#slow_ema').val('17');
+                $('#rsi_period').val('10');
+                $('#rsi_overbought').val('60');
+                $('#rsi_oversold').val('40');
+                // Multi-timeframe analysis has been removed
+                showToast('Aggressive preset loaded', 'info');
+            }
+        });
+        // Export settings
+        $('#export-settings').click(function() {
+            // Get current settings
+            const settings = {
+                symbol: $('#symbol').val(),
+                timeframe: $('#timeframe').val(),
+                leverage: parseInt($('#leverage').val()),
+                dry_run: $('#dry_run').is(':checked'),
+                risk_per_trade: parseFloat($('#risk_per_trade').val()) / 100,
+                risk_reward_ratio: parseFloat($('#risk_reward_ratio').val()),
+                sl_atr_multiplier: parseFloat($('#sl_atr_multiplier').val()),
+                fast_ema: parseInt($('#fast_ema').val()),
+                slow_ema: parseInt($('#slow_ema').val()),
+                rsi_period: parseInt($('#rsi_period').val()),
+                rsi_overbought: parseInt($('#rsi_overbought').val()),
+                rsi_oversold: parseInt($('#rsi_oversold').val()),
+                // Multi-timeframe analysis and volume analysis have been removed
+            };
+            // Create a blob and download link
+            const blob = new Blob([JSON.stringify(settings, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `bybit_bot_settings_${new Date().toISOString().slice(0, 10)}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast('Settings exported successfully', 'success');
+        });
+        // Import settings
+        $('#import-settings').click(function() {
+            // Create a file input
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = '.json';
+            fileInput.style.display = 'none';
+            document.body.appendChild(fileInput);
+            // Trigger click on file input
+            fileInput.click();
+            // Handle file selection
+            fileInput.addEventListener('change', function() {
+                const file = fileInput.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        try {
+                            const settings = JSON.parse(e.target.result);
+                            // Apply settings to form
+                            if (settings.symbol) $('#symbol').val(settings.symbol);
+                            if (settings.timeframe) $('#timeframe').val(settings.timeframe);
+                            if (settings.leverage) $('#leverage').val(settings.leverage);
+                            if (settings.dry_run !== undefined) $('#dry_run').prop('checked', settings.dry_run);
+                            if (settings.risk_per_trade) $('#risk_per_trade').val(settings.risk_per_trade * 100);
+                            if (settings.risk_reward_ratio) $('#risk_reward_ratio').val(settings.risk_reward_ratio);
+                            if (settings.sl_atr_multiplier) $('#sl_atr_multiplier').val(settings.sl_atr_multiplier);
+                            if (settings.fast_ema) $('#fast_ema').val(settings.fast_ema);
+                            if (settings.slow_ema) $('#slow_ema').val(settings.slow_ema);
+                            if (settings.rsi_period) $('#rsi_period').val(settings.rsi_period);
+                            if (settings.rsi_overbought) $('#rsi_overbought').val(settings.rsi_overbought);
+                            if (settings.rsi_oversold) $('#rsi_oversold').val(settings.rsi_oversold);
+                            // Multi-timeframe analysis and volume analysis have been removed
+                            showToast('Settings imported successfully', 'success');
+                        } catch (error) {
+                            showToast('Failed to import settings: Invalid file format', 'error');
+                        }
+                    };
+                    reader.readAsText(file);
+                }
+                // Remove file input
+                document.body.removeChild(fileInput);
+            });
+        });
+        // Form input validation with visual feedback
+        $('input[type="number"]').on('input', function() {
+            const min = parseFloat($(this).attr('min'));
+            const max = parseFloat($(this).attr('max'));
+            const value = parseFloat($(this).val());
+            const formGroup = $(this).closest('.mb-3');
+            const feedbackElement = formGroup.find('.invalid-feedback');
+            if (isNaN(value)) {
+                $(this).addClass('is-invalid');
+                if (!feedbackElement.length) {
+                    formGroup.append(`<div class="invalid-feedback">Please enter a valid number</div>`);
+                } else {
+                    feedbackElement.text('Please enter a valid number');
+                }
+            } else if (value < min || value > max) {
+                $(this).addClass('is-invalid');
+                if (!feedbackElement.length) {
+                    formGroup.append(`<div class="invalid-feedback">Value must be between ${min} and ${max}</div>`);
+                } else {
+                    feedbackElement.text(`Value must be between ${min} and ${max}`);
+                }
+            } else {
+                $(this).removeClass('is-invalid').addClass('is-valid');
+                if (feedbackElement.length) {
+                    feedbackElement.remove();
+                }
+            }
+        });
+        // Add visual feedback for form fields
+        $('.form-control, .form-select').on('focus', function() {
+            $(this).closest('.mb-3').addClass('focused');
+        }).on('blur', function() {
+            $(this).closest('.mb-3').removeClass('focused');
+        });
+        // Add animation to form submission
+        $('#settings-form').on('submit', function() {
+            $('.card').addClass('pulse');
+            setTimeout(() => {
+                $('.card').removeClass('pulse');
+            }, 1000);
+        });
+        // Add confirmation for preset buttons
+        $('.btn-preset').on('click', function() {
+            const presetName = $(this).text().trim().split('\n')[0];
+            if (confirm(`Load ${presetName} preset? This will override your current settings.`)) {
+                // Show visual feedback
+                $(this).addClass('active');
+                setTimeout(() => {
+                    $(this).removeClass('active');
+                }, 500);
+                // Add shimmer effect to form fields that will be updated
+                $('input, select').attr('data-loading', 'true');
+                addShimmerEffect();
+            }
+        });
+    });
+</script>
+{% endblock %}

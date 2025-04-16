@@ -1,0 +1,749 @@
+{% extends "base.html" %}
+{% block title %}Performance Metrics - Bybit Trading Bot{% endblock %}
+{% block extra_css %}
+<style>
+    .metrics-card {
+        height: 100%;
+        transition: all 0.3s ease;
+    }
+    .metric-value {
+        font-size: 1.8rem;
+        font-weight: 700;
+    }
+    .metric-label {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+    }
+    .chart-container {
+        height: 300px;
+        position: relative;
+    }
+    .time-selector {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 1rem;
+    }
+    .time-selector .btn {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.8rem;
+        margin: 0 2px;
+    }
+    .positive-value {
+        color: var(--success-color);
+    }
+    .negative-value {
+        color: var(--danger-color);
+    }
+</style>
+{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3">Performance Metrics</h1>
+    <div>
+        <button id="refresh-metrics" class="btn btn-primary">
+            <i class="fas fa-sync-alt me-1"></i>Refresh
+        </button>
+        <button id="export-metrics" class="btn btn-outline-primary ms-2">
+            <i class="fas fa-download me-1"></i>Export
+        </button>
+    </div>
+</div>
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="time-selector">
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-outline-primary active" data-range="1h">1 Hour</button>
+                <button type="button" class="btn btn-outline-primary" data-range="6h">6 Hours</button>
+                <button type="button" class="btn btn-outline-primary" data-range="24h">24 Hours</button>
+                <button type="button" class="btn btn-outline-primary" data-range="7d">7 Days</button>
+                <button type="button" class="btn btn-outline-primary" data-range="30d">30 Days</button>
+            </div>
+        </div>
+        <div class="text-center">
+            <small id="time-range-display" class="text-muted">Showing data for the last hour</small>
+        </div>
+    </div>
+</div>
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-server me-2"></i>System Metrics</h5>
+                <span id="system-last-updated">Last updated: Never</span>
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-4 mb-3">
+                        <div class="card metrics-card">
+                            <div class="card-body text-center">
+                                <div class="metric-label">CPU Usage</div>
+                                <div class="metric-value" id="cpu-usage">-</div>
+                                <div class="progress mt-2" style="height: 5px;">
+                                    <div id="cpu-progress" class="progress-bar" role="progressbar" style="width: 0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="card metrics-card">
+                            <div class="card-body text-center">
+                                <div class="metric-label">Memory Usage</div>
+                                <div class="metric-value" id="memory-usage">-</div>
+                                <div class="progress mt-2" style="height: 5px;">
+                                    <div id="memory-progress" class="progress-bar" role="progressbar" style="width: 0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="card metrics-card">
+                            <div class="card-body text-center">
+                                <div class="metric-label">Disk Usage</div>
+                                <div class="metric-value" id="disk-usage">-</div>
+                                <div class="progress mt-2" style="height: 5px;">
+                                    <div id="disk-progress" class="progress-bar" role="progressbar" style="width: 0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="system-chart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-exchange-alt me-2"></i>API Metrics</h5>
+                <span id="api-last-updated">Last updated: Never</span>
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-3 mb-3">
+                        <div class="card metrics-card">
+                            <div class="card-body text-center">
+                                <div class="metric-label">Total Calls</div>
+                                <div class="metric-value" id="api-calls-total">-</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card metrics-card">
+                            <div class="card-body text-center">
+                                <div class="metric-label">Success Rate</div>
+                                <div class="metric-value" id="api-success-rate">-</div>
+                                <div class="progress mt-2" style="height: 5px;">
+                                    <div id="api-success-progress" class="progress-bar" role="progressbar" style="width: 0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card metrics-card">
+                            <div class="card-body text-center">
+                                <div class="metric-label">Avg Latency</div>
+                                <div class="metric-value" id="api-latency-avg">-</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card metrics-card">
+                            <div class="card-body text-center">
+                                <div class="metric-label">Rate Limit Hits</div>
+                                <div class="metric-value" id="api-rate-limit-hits">-</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="api-chart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>Trading Metrics</h5>
+                <span id="trading-last-updated">Last updated: Never</span>
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-3 mb-3">
+                        <div class="card metrics-card">
+                            <div class="card-body text-center">
+                                <div class="metric-label">Total Trades</div>
+                                <div class="metric-value" id="trades-total">-</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card metrics-card">
+                            <div class="card-body text-center">
+                                <div class="metric-label">Win Rate</div>
+                                <div class="metric-value" id="win-rate">-</div>
+                                <div class="progress mt-2" style="height: 5px;">
+                                    <div id="win-rate-progress" class="progress-bar" role="progressbar" style="width: 0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card metrics-card">
+                            <div class="card-body text-center">
+                                <div class="metric-label">Profit/Loss</div>
+                                <div class="metric-value" id="profit-loss">-</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card metrics-card">
+                            <div class="card-body text-center">
+                                <div class="metric-label">Avg Profit</div>
+                                <div class="metric-value" id="avg-profit">-</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="trading-chart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-tachometer-alt me-2"></i>Performance Metrics</h5>
+                <span id="performance-last-updated">Last updated: Never</span>
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-3 mb-3">
+                        <div class="card metrics-card">
+                            <div class="card-body text-center">
+                                <div class="metric-label">Loop Time</div>
+                                <div class="metric-value" id="loop-time">-</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card metrics-card">
+                            <div class="card-body text-center">
+                                <div class="metric-label">Data Processing Time</div>
+                                <div class="metric-value" id="data-processing-time">-</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card metrics-card">
+                            <div class="card-body text-center">
+                                <div class="metric-label">Strategy Time</div>
+                                <div class="metric-value" id="strategy-time">-</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card metrics-card">
+                            <div class="card-body text-center">
+                                <div class="metric-label">Order Management Time</div>
+                                <div class="metric-value" id="order-management-time">-</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="performance-chart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/luxon@3.0.1/build/global/luxon.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.2.0/dist/chartjs-adapter-luxon.min.js"></script>
+<script>
+    $(document).ready(function() {
+        // Chart instances
+        let systemChart = null;
+        let apiChart = null;
+        let tradingChart = null;
+        let performanceChart = null;
+        // Current time range
+        let currentRange = '1h';
+        // Fetch metrics on page load
+        fetchMetrics(currentRange);
+        // Refresh metrics every 30 seconds
+        setInterval(function() {
+            fetchMetrics(currentRange);
+        }, 30000);
+        // Refresh button click handler
+        $('#refresh-metrics').click(function() {
+            fetchMetrics(currentRange);
+        });
+        // Export button click handler
+        $('#export-metrics').click(function() {
+            exportMetrics();
+        });
+        // Time range selector click handler
+        $('.time-selector .btn').click(function() {
+            $('.time-selector .btn').removeClass('active');
+            $(this).addClass('active');
+            currentRange = $(this).data('range');
+            updateTimeRangeDisplay(currentRange);
+            fetchMetrics(currentRange);
+        });
+        // Function to fetch metrics
+        function fetchMetrics(range) {
+            $.ajax({
+                url: `/api/metrics?range=${range}`,
+                type: 'GET',
+                dataType: 'json',
+                beforeSend: function() {
+                    // Show loading indicators
+                    $('#system-last-updated').text('Loading...');
+                    $('#api-last-updated').text('Loading...');
+                    $('#trading-last-updated').text('Loading...');
+                    $('#performance-last-updated').text('Loading...');
+                },
+                success: function(data) {
+                    if (data.status === 'OK') {
+                        updateMetricsDashboard(data.metrics);
+                    } else {
+                        showToast('Error fetching metrics: ' + data.message, 'error');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    showToast('Error fetching metrics: ' + error, 'error');
+                }
+            });
+        }
+        // Function to update metrics dashboard
+        function updateMetricsDashboard(metrics) {
+            // Update last updated time
+            const now = new Date().toLocaleTimeString();
+            $('#system-last-updated').text('Last updated: ' + now);
+            $('#api-last-updated').text('Last updated: ' + now);
+            $('#trading-last-updated').text('Last updated: ' + now);
+            $('#performance-last-updated').text('Last updated: ' + now);
+            // Update system metrics
+            updateSystemMetrics(metrics.system);
+            // Update API metrics
+            updateApiMetrics(metrics.api);
+            // Update trading metrics
+            updateTradingMetrics(metrics.trading);
+            // Update performance metrics
+            updatePerformanceMetrics(metrics.performance);
+            // Update charts
+            updateSystemChart(metrics.system_history);
+            updateApiChart(metrics.api_history);
+            updateTradingChart(metrics.trading_history);
+            updatePerformanceChart(metrics.performance_history);
+        }
+        // Function to update system metrics
+        function updateSystemMetrics(metrics) {
+            // Update CPU usage
+            $('#cpu-usage').text(metrics.cpu_usage.toFixed(1) + '%');
+            $('#cpu-progress').css('width', metrics.cpu_usage + '%');
+            setProgressBarColor($('#cpu-progress'), metrics.cpu_usage);
+            // Update memory usage
+            $('#memory-usage').text(metrics.memory_usage.toFixed(1) + '%');
+            $('#memory-progress').css('width', metrics.memory_usage + '%');
+            setProgressBarColor($('#memory-progress'), metrics.memory_usage);
+            // Update disk usage
+            $('#disk-usage').text(metrics.disk_usage.toFixed(1) + '%');
+            $('#disk-progress').css('width', metrics.disk_usage + '%');
+            setProgressBarColor($('#disk-progress'), metrics.disk_usage);
+        }
+        // Function to update API metrics
+        function updateApiMetrics(metrics) {
+            // Update total calls
+            $('#api-calls-total').text(metrics.calls_total);
+            // Update success rate
+            const successRate = (metrics.calls_successful / metrics.calls_total * 100) || 0;
+            $('#api-success-rate').text(successRate.toFixed(1) + '%');
+            $('#api-success-progress').css('width', successRate + '%');
+            setProgressBarColor($('#api-success-progress'), successRate);
+            // Update average latency
+            $('#api-latency-avg').text(metrics.latency_avg.toFixed(1) + ' ms');
+            // Update rate limit hits
+            $('#api-rate-limit-hits').text(metrics.rate_limit_hits);
+        }
+        // Function to update trading metrics
+        function updateTradingMetrics(metrics) {
+            // Update total trades
+            $('#trades-total').text(metrics.trades_total);
+            // Update win rate
+            $('#win-rate').text(metrics.win_rate.toFixed(1) + '%');
+            $('#win-rate-progress').css('width', metrics.win_rate + '%');
+            setProgressBarColor($('#win-rate-progress'), metrics.win_rate);
+            // Update profit/loss
+            const profitLoss = metrics.profit_loss.toFixed(2);
+            const profitLossElement = $('#profit-loss');
+            profitLossElement.text((profitLoss > 0 ? '+' : '') + profitLoss + ' USDT');
+            profitLossElement.removeClass('positive-value negative-value');
+            if (profitLoss > 0) {
+                profitLossElement.addClass('positive-value');
+            } else if (profitLoss < 0) {
+                profitLossElement.addClass('negative-value');
+            }
+            // Update average profit
+            $('#avg-profit').text(metrics.avg_profit.toFixed(2) + ' USDT');
+        }
+        // Function to update performance metrics
+        function updatePerformanceMetrics(metrics) {
+            // Update loop time
+            $('#loop-time').text(metrics.loop_time.toFixed(2) + ' ms');
+            // Update data processing time
+            $('#data-processing-time').text(metrics.data_processing_time.toFixed(2) + ' ms');
+            // Update strategy time
+            $('#strategy-time').text(metrics.strategy_time.toFixed(2) + ' ms');
+            // Update order management time
+            $('#order-management-time').text(metrics.order_management_time.toFixed(2) + ' ms');
+        }
+        // Function to update system chart
+        function updateSystemChart(history) {
+            const ctx = document.getElementById('system-chart').getContext('2d');
+            // Prepare data
+            const labels = history.timestamps;
+            const cpuData = history.cpu_usage;
+            const memoryData = history.memory_usage;
+            const diskData = history.disk_usage;
+            // Destroy existing chart if it exists
+            if (systemChart) {
+                systemChart.destroy();
+            }
+            // Create new chart
+            systemChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'CPU Usage',
+                            data: cpuData,
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            tension: 0.4,
+                            fill: true
+                        },
+                        {
+                            label: 'Memory Usage',
+                            data: memoryData,
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                            tension: 0.4,
+                            fill: true
+                        },
+                        {
+                            label: 'Disk Usage',
+                            data: diskData,
+                            borderColor: 'rgba(255, 206, 86, 1)',
+                            backgroundColor: 'rgba(255, 206, 86, 0.2)',
+                            tension: 0.4,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: getTimeUnit(currentRange)
+                            },
+                            title: {
+                                display: true,
+                                text: 'Time'
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: 'Usage (%)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        // Function to update API chart
+        function updateApiChart(history) {
+            const ctx = document.getElementById('api-chart').getContext('2d');
+            // Prepare data
+            const labels = history.timestamps;
+            const latencyData = history.latency;
+            const callsData = history.calls;
+            // Destroy existing chart if it exists
+            if (apiChart) {
+                apiChart.destroy();
+            }
+            // Create new chart
+            apiChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'API Latency (ms)',
+                            data: latencyData,
+                            borderColor: 'rgba(153, 102, 255, 1)',
+                            backgroundColor: 'rgba(153, 102, 255, 0.2)',
+                            tension: 0.4,
+                            fill: true,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'API Calls',
+                            data: callsData,
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                            tension: 0.4,
+                            fill: true,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: getTimeUnit(currentRange)
+                            },
+                            title: {
+                                display: true,
+                                text: 'Time'
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Latency (ms)'
+                            }
+                        },
+                        y1: {
+                            beginAtZero: true,
+                            position: 'right',
+                            grid: {
+                                drawOnChartArea: false
+                            },
+                            title: {
+                                display: true,
+                                text: 'Calls'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        // Function to update trading chart
+        function updateTradingChart(history) {
+            const ctx = document.getElementById('trading-chart').getContext('2d');
+            // Prepare data
+            const labels = history.timestamps;
+            const profitData = history.profit_loss;
+            const winRateData = history.win_rate;
+            // Destroy existing chart if it exists
+            if (tradingChart) {
+                tradingChart.destroy();
+            }
+            // Create new chart
+            tradingChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Profit/Loss (USDT)',
+                            data: profitData,
+                            borderColor: 'rgba(255, 159, 64, 1)',
+                            backgroundColor: 'rgba(255, 159, 64, 0.2)',
+                            tension: 0.4,
+                            fill: true,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Win Rate (%)',
+                            data: winRateData,
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                            tension: 0.4,
+                            fill: true,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: getTimeUnit(currentRange)
+                            },
+                            title: {
+                                display: true,
+                                text: 'Time'
+                            }
+                        },
+                        y: {
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Profit/Loss (USDT)'
+                            }
+                        },
+                        y1: {
+                            beginAtZero: true,
+                            max: 100,
+                            position: 'right',
+                            grid: {
+                                drawOnChartArea: false
+                            },
+                            title: {
+                                display: true,
+                                text: 'Win Rate (%)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        // Function to update performance chart
+        function updatePerformanceChart(history) {
+            const ctx = document.getElementById('performance-chart').getContext('2d');
+            // Prepare data
+            const labels = history.timestamps;
+            const loopTimeData = history.loop_time;
+            const strategyTimeData = history.strategy_time;
+            // Destroy existing chart if it exists
+            if (performanceChart) {
+                performanceChart.destroy();
+            }
+            // Create new chart
+            performanceChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Loop Time (ms)',
+                            data: loopTimeData,
+                            borderColor: 'rgba(201, 203, 207, 1)',
+                            backgroundColor: 'rgba(201, 203, 207, 0.2)',
+                            tension: 0.4,
+                            fill: true
+                        },
+                        {
+                            label: 'Strategy Time (ms)',
+                            data: strategyTimeData,
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            tension: 0.4,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: getTimeUnit(currentRange)
+                            },
+                            title: {
+                                display: true,
+                                text: 'Time'
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Time (ms)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        // Function to export metrics
+        function exportMetrics() {
+            window.location.href = `/api/metrics/export?range=${currentRange}`;
+        }
+        // Function to update time range display
+        function updateTimeRangeDisplay(range) {
+            let displayText = '';
+            switch (range) {
+                case '1h':
+                    displayText = 'Showing data for the last hour';
+                    break;
+                case '6h':
+                    displayText = 'Showing data for the last 6 hours';
+                    break;
+                case '24h':
+                    displayText = 'Showing data for the last 24 hours';
+                    break;
+                case '7d':
+                    displayText = 'Showing data for the last 7 days';
+                    break;
+                case '30d':
+                    displayText = 'Showing data for the last 30 days';
+                    break;
+                default:
+                    displayText = 'Showing data for the last hour';
+            }
+            $('#time-range-display').text(displayText);
+        }
+        // Helper function to set progress bar color based on value
+        function setProgressBarColor(element, value) {
+            element.removeClass('bg-success bg-warning bg-danger');
+            if (value < 50) {
+                element.addClass('bg-success');
+            } else if (value < 80) {
+                element.addClass('bg-warning');
+            } else {
+                element.addClass('bg-danger');
+            }
+        }
+        // Helper function to get time unit based on range
+        function getTimeUnit(range) {
+            switch (range) {
+                case '1h':
+                case '6h':
+                    return 'minute';
+                case '24h':
+                    return 'hour';
+                case '7d':
+                    return 'day';
+                case '30d':
+                    return 'week';
+                default:
+                    return 'minute';
+            }
+        }
+    });
+</script>
+{% endblock %}

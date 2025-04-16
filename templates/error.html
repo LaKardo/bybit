@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Error - Bybit Trading Bot{% endblock %}
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0"><i class="fas fa-exclamation-triangle me-2"></i>Error</h4>
+                </div>
+                <div class="card-body">
+                    <h5 class="card-title">An error occurred</h5>
+                    <p class="card-text">{{ error }}</p>
+                    <div class="alert alert-warning">
+                        <h6><i class="fas fa-info-circle me-2"></i>Possible causes:</h6>
+                        <ul>
+                            <li>The trading bot is not running or not properly initialized</li>
+                            <li>There might be a configuration issue</li>
+                            <li>Required dependencies might be missing</li>
+                        </ul>
+                    </div>
+                    <div class="mt-4">
+                        <a href="{{ url_for('auth.login') }}" class="btn btn-primary me-2">
+                            <i class="fas fa-sign-in-alt me-1"></i>Login Again
+                        </a>
+                        <a href="javascript:history.back()" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-1"></i>Go Back
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

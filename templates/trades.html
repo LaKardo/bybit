@@ -1,0 +1,286 @@
+{% extends "base.html" %}
+{% block title %}Trades - Bybit Trading Bot{% endblock %}
+{% block extra_css %}
+<style>
+    .trade-card {
+        transition: all 0.3s ease;
+    }
+    .trade-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+    .profit {
+        color: #28a745;
+    }
+    .loss {
+        color: #dc3545;
+    }
+    .chart-container {
+        height: 400px;
+    }
+</style>
+{% endblock %}
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>Trading Performance</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="card trade-card mb-3">
+                            <div class="card-body text-center">
+                                <h6 class="card-title text-muted">Total Trades</h6>
+                                <h4 id="total-trades" class="mb-0">0</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card trade-card mb-3">
+                            <div class="card-body text-center">
+                                <h6 class="card-title text-muted">Win Rate</h6>
+                                <h4 id="win-rate" class="mb-0">0%</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card trade-card mb-3">
+                            <div class="card-body text-center">
+                                <h6 class="card-title text-muted">Profit Factor</h6>
+                                <h4 id="profit-factor" class="mb-0">0</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card trade-card mb-3">
+                            <div class="card-body text-center">
+                                <h6 class="card-title text-muted">Total P&L</h6>
+                                <h4 id="total-pnl" class="mb-0">0 USDT</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <div class="chart-container">
+                            <canvas id="equity-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-exchange-alt me-2"></i>Trade History</h5>
+                <div>
+                    <button class="btn btn-sm btn-light" id="refresh-trades">
+                        <i class="fas fa-sync-alt me-1"></i>Refresh
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped" id="trades-table">
+                        <thead>
+                            <tr>
+                                <th>Date/Time</th>
+                                <th>Symbol</th>
+                                <th>Type</th>
+                                <th>Side</th>
+                                <th>Entry Price</th>
+                                <th>Exit Price</th>
+                                <th>Size</th>
+                                <th>P&L</th>
+                                <th>P&L %</th>
+                                <th>Duration</th>
+                                <th>Exit Reason</th>
+                            </tr>
+                        </thead>
+                        <tbody id="trades-body">
+                            <tr>
+                                <td colspan="11" class="text-center py-4">No trade history available</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    $(document).ready(function() {
+        // Sample data for demonstration
+        const sampleTrades = [
+            {
+                datetime: '2023-04-15 10:30:45',
+                symbol: 'BTCUSDT',
+                type: 'ENTRY',
+                side: 'BUY',
+                entry_price: 65432.50,
+                exit_price: 67890.25,
+                size: 0.15,
+                pnl: 367.76,
+                pnl_percent: 3.75,
+                duration: '4h 15m',
+                exit_reason: 'TAKE_PROFIT'
+            },
+            {
+                datetime: '2023-04-14 15:20:30',
+                symbol: 'BTCUSDT',
+                type: 'ENTRY',
+                side: 'SELL',
+                entry_price: 68123.75,
+                exit_price: 66789.50,
+                size: 0.12,
+                pnl: 160.11,
+                pnl_percent: 1.96,
+                duration: '2h 45m',
+                exit_reason: 'TAKE_PROFIT'
+            },
+            {
+                datetime: '2023-04-13 09:15:10',
+                symbol: 'BTCUSDT',
+                type: 'ENTRY',
+                side: 'BUY',
+                entry_price: 64567.25,
+                exit_price: 63890.50,
+                size: 0.18,
+                pnl: -121.82,
+                pnl_percent: -1.05,
+                duration: '3h 30m',
+                exit_reason: 'STOP_LOSS'
+            }
+        ];
+        // Sample performance data
+        const performanceData = {
+            total_trades: 3,
+            win_rate: 66.67,
+            profit_factor: 4.33,
+            total_pnl: 406.05,
+            equity_curve: [
+                { date: '2023-04-13', equity: 10000 },
+                { date: '2023-04-13', equity: 9878.18 },
+                { date: '2023-04-14', equity: 10038.29 },
+                { date: '2023-04-15', equity: 10406.05 }
+            ]
+        };
+        // Update performance metrics
+        $('#total-trades').text(performanceData.total_trades);
+        $('#win-rate').text(performanceData.win_rate.toFixed(2) + '%');
+        $('#profit-factor').text(performanceData.profit_factor.toFixed(2));
+        const totalPnl = performanceData.total_pnl;
+        $('#total-pnl').text(totalPnl.toFixed(2) + ' USDT');
+        if (totalPnl > 0) {
+            $('#total-pnl').addClass('profit');
+        } else if (totalPnl < 0) {
+            $('#total-pnl').addClass('loss');
+        }
+        // Populate trades table
+        const tradesBody = $('#trades-body');
+        tradesBody.empty();
+        sampleTrades.forEach(function(trade) {
+            const tr = $('<tr></tr>');
+            tr.append(`<td>${trade.datetime}</td>`);
+            tr.append(`<td>${trade.symbol}</td>`);
+            tr.append(`<td>${trade.type}</td>`);
+            const sideClass = trade.side === 'BUY' ? 'text-success' : 'text-danger';
+            tr.append(`<td class="${sideClass}">${trade.side}</td>`);
+            tr.append(`<td>${trade.entry_price.toFixed(2)}</td>`);
+            tr.append(`<td>${trade.exit_price.toFixed(2)}</td>`);
+            tr.append(`<td>${trade.size}</td>`);
+            const pnlClass = trade.pnl >= 0 ? 'profit' : 'loss';
+            tr.append(`<td class="${pnlClass}">${trade.pnl.toFixed(2)} USDT</td>`);
+            tr.append(`<td class="${pnlClass}">${trade.pnl_percent.toFixed(2)}%</td>`);
+            tr.append(`<td>${trade.duration}</td>`);
+            let exitReasonClass = 'text-muted';
+            if (trade.exit_reason === 'TAKE_PROFIT') {
+                exitReasonClass = 'text-success';
+            } else if (trade.exit_reason === 'STOP_LOSS') {
+                exitReasonClass = 'text-danger';
+            }
+            tr.append(`<td class="${exitReasonClass}">${trade.exit_reason}</td>`);
+            tradesBody.append(tr);
+        });
+        // Create equity chart
+        const ctx = document.getElementById('equity-chart').getContext('2d');
+        const equityChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: performanceData.equity_curve.map(item => item.date),
+                datasets: [{
+                    label: 'Equity Curve',
+                    data: performanceData.equity_curve.map(item => item.equity),
+                    backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                    borderColor: 'rgba(13, 110, 253, 1)',
+                    borderWidth: 2,
+                    tension: 0.1,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `Equity: ${context.raw.toFixed(2)} USDT`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: false
+                    }
+                }
+            }
+        });
+        // Refresh button handler
+        $('#refresh-trades').click(function() {
+            // In a real implementation, this would fetch the latest trade data from the server
+            // For now, we'll just show a loading spinner and then restore the sample data
+            const tradesBody = $('#trades-body');
+            tradesBody.html('<tr><td colspan="11" class="text-center py-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></td></tr>');
+            setTimeout(function() {
+                tradesBody.empty();
+                sampleTrades.forEach(function(trade) {
+                    const tr = $('<tr></tr>');
+                    tr.append(`<td>${trade.datetime}</td>`);
+                    tr.append(`<td>${trade.symbol}</td>`);
+                    tr.append(`<td>${trade.type}</td>`);
+                    const sideClass = trade.side === 'BUY' ? 'text-success' : 'text-danger';
+                    tr.append(`<td class="${sideClass}">${trade.side}</td>`);
+                    tr.append(`<td>${trade.entry_price.toFixed(2)}</td>`);
+                    tr.append(`<td>${trade.exit_price.toFixed(2)}</td>`);
+                    tr.append(`<td>${trade.size}</td>`);
+                    const pnlClass = trade.pnl >= 0 ? 'profit' : 'loss';
+                    tr.append(`<td class="${pnlClass}">${trade.pnl.toFixed(2)} USDT</td>`);
+                    tr.append(`<td class="${pnlClass}">${trade.pnl_percent.toFixed(2)}%</td>`);
+                    tr.append(`<td>${trade.duration}</td>`);
+                    let exitReasonClass = 'text-muted';
+                    if (trade.exit_reason === 'TAKE_PROFIT') {
+                        exitReasonClass = 'text-success';
+                    } else if (trade.exit_reason === 'STOP_LOSS') {
+                        exitReasonClass = 'text-danger';
+                    }
+                    tr.append(`<td class="${exitReasonClass}">${trade.exit_reason}</td>`);
+                    tradesBody.append(tr);
+                });
+            }, 1000);
+        });
+    });
+</script>
+{% endblock %}

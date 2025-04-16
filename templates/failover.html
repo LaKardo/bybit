@@ -1,0 +1,544 @@
+{% extends "base.html" %}
+{% block title %}Failover Management - Bybit Trading Bot{% endblock %}
+{% block extra_css %}
+<style>
+    .failover-card {
+        height: 100%;
+        transition: all 0.3s ease;
+    }
+    .status-indicator {
+        width: 15px;
+        height: 15px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 8px;
+    }
+    .status-normal {
+        background-color: var(--success-color);
+    }
+    .status-degraded {
+        background-color: var(--warning-color);
+    }
+    .status-failover {
+        background-color: var(--info-color);
+    }
+    .status-recovery {
+        background-color: var(--warning-color);
+    }
+    .status-emergency {
+        background-color: var(--danger-color);
+    }
+    .component-healthy {
+        border-left: 4px solid var(--success-color);
+    }
+    .component-warning {
+        border-left: 4px solid var(--warning-color);
+    }
+    .component-critical {
+        border-left: 4px solid var(--danger-color);
+    }
+    .component-failed {
+        border-left: 4px solid var(--danger-color);
+    }
+    .component-recovering {
+        border-left: 4px solid var(--info-color);
+    }
+    .config-toggle {
+        width: 60px;
+    }
+</style>
+{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3">Failover Management</h1>
+    <div>
+        <button id="refresh-failover" class="btn btn-primary">
+            <i class="fas fa-sync-alt me-1"></i>Refresh
+        </button>
+    </div>
+</div>
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-shield-alt me-2"></i>Failover Status</h5>
+                <span id="failover-last-updated">Last updated: Never</span>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-center mb-3">
+                            <span class="status-indicator" id="failover-status-indicator"></span>
+                            <h4 id="failover-state" class="mb-0">Loading...</h4>
+                        </div>
+                        <p id="failover-message">Checking failover status...</p>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <button id="emergency-shutdown" class="btn btn-danger" disabled>
+                            <i class="fas fa-power-off me-1"></i>Emergency Shutdown
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-microchip me-2"></i>Component Status</h5>
+            </div>
+            <div class="card-body">
+                <div class="row" id="component-container">
+                    <div class="col-12 text-center py-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Loading components...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-cogs me-2"></i>Failover Configuration</h5>
+                <button id="save-config" class="btn btn-primary btn-sm">
+                    <i class="fas fa-save me-1"></i>Save Changes
+                </button>
+            </div>
+            <div class="card-body">
+                <form id="failover-config-form">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card mb-3">
+                                <div class="card-body">
+                                    <h6 class="card-title">General Settings</h6>
+                                    <div class="mb-3 d-flex justify-content-between align-items-center">
+                                        <label class="form-label mb-0">Failover Enabled</label>
+                                        <div class="form-check form-switch config-toggle">
+                                            <input class="form-check-input" type="checkbox" id="failover-enabled" checked>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3 d-flex justify-content-between align-items-center">
+                                        <label class="form-label mb-0">Auto Recovery</label>
+                                        <div class="form-check form-switch config-toggle">
+                                            <input class="form-check-input" type="checkbox" id="auto-recovery-enabled" checked>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3 d-flex justify-content-between align-items-center">
+                                        <label class="form-label mb-0">Emergency Shutdown</label>
+                                        <div class="form-check form-switch config-toggle">
+                                            <input class="form-check-input" type="checkbox" id="emergency-shutdown-enabled" checked>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3 d-flex justify-content-between align-items-center">
+                                        <label class="form-label mb-0">Notifications</label>
+                                        <div class="form-check form-switch config-toggle">
+                                            <input class="form-check-input" type="checkbox" id="notification-enabled" checked>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card mb-3">
+                                <div class="card-body">
+                                    <h6 class="card-title">Recovery Settings</h6>
+                                    <div class="mb-3">
+                                        <label for="max-recovery-attempts" class="form-label">Max Recovery Attempts</label>
+                                        <input type="number" class="form-control" id="max-recovery-attempts" min="1" max="10" value="3">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="recovery-backoff" class="form-label">Recovery Backoff (seconds)</label>
+                                        <input type="number" class="form-control" id="recovery-backoff" min="10" max="300" value="60">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-history me-2"></i>Recovery History</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover" id="recovery-history-table">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Component</th>
+                                <th>Status</th>
+                                <th>Attempt</th>
+                                <th>Result</th>
+                                <th>Duration</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recovery-history-body">
+                            <tr>
+                                <td colspan="6" class="text-center">No recovery history available</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="emergency-shutdown-modal" tabindex="-1" aria-labelledby="emergency-shutdown-modal-label" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="emergency-shutdown-modal-label">Emergency Shutdown</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Warning:</strong> This will immediately stop all trading operations and shut down the bot.
+                </div>
+                <p>Are you sure you want to perform an emergency shutdown?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirm-emergency-shutdown">
+                    <i class="fas fa-power-off me-1"></i>Confirm Shutdown
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="component-reset-modal" tabindex="-1" aria-labelledby="component-reset-modal-label" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="component-reset-modal-label">Reset Component</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to reset the <span id="reset-component-name">component</span>?</p>
+                <p>This will clear all failure counts and recovery attempts for this component.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirm-component-reset">Reset Component</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Current component being reset
+        let currentResetComponent = null;
+        // Fetch failover status on page load
+        fetchFailoverStatus();
+        // Refresh failover status every 30 seconds
+        setInterval(fetchFailoverStatus, 30000);
+        // Refresh button click handler
+        $('#refresh-failover').click(function() {
+            fetchFailoverStatus();
+        });
+        // Emergency shutdown button click handler
+        $('#emergency-shutdown').click(function() {
+            $('#emergency-shutdown-modal').modal('show');
+        });
+        // Confirm emergency shutdown button click handler
+        $('#confirm-emergency-shutdown').click(function() {
+            performEmergencyShutdown();
+        });
+        // Save config button click handler
+        $('#save-config').click(function() {
+            saveFailoverConfig();
+        });
+        // Function to fetch failover status
+        function fetchFailoverStatus() {
+            $.ajax({
+                url: '/api/failover/status',
+                type: 'GET',
+                dataType: 'json',
+                beforeSend: function() {
+                    // Show loading indicators
+                    $('#failover-state').text('Loading...');
+                    $('#failover-last-updated').text('Loading...');
+                },
+                success: function(data) {
+                    if (data.status === 'OK') {
+                        updateFailoverDashboard(data.failover);
+                        updateRecoveryHistory(data.history);
+                    } else {
+                        showToast('Error fetching failover status: ' + data.message, 'error');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    showToast('Error fetching failover status: ' + error, 'error');
+                }
+            });
+        }
+        // Function to update failover dashboard
+        function updateFailoverDashboard(failover) {
+            // Update last updated time
+            $('#failover-last-updated').text('Last updated: ' + new Date().toLocaleTimeString());
+            // Update failover state
+            updateFailoverState(failover.state);
+            // Update component status
+            updateComponentStatus(failover.components);
+            // Update failover configuration
+            updateFailoverConfig(failover.config);
+            // Enable/disable emergency shutdown button
+            $('#emergency-shutdown').prop('disabled', !failover.config.emergency_shutdown);
+        }
+        // Function to update failover state
+        function updateFailoverState(state) {
+            $('#failover-state').text(formatFailoverState(state));
+            // Update status indicator
+            const indicator = $('#failover-status-indicator');
+            indicator.removeClass('status-normal status-degraded status-failover status-recovery status-emergency');
+            indicator.addClass('status-' + state.toLowerCase());
+            // Update message
+            const message = $('#failover-message');
+            message.removeClass('text-success text-warning text-danger');
+            switch (state) {
+                case 'NORMAL':
+                    message.text('All systems are operating normally.');
+                    message.addClass('text-success');
+                    break;
+                case 'DEGRADED':
+                    message.text('Some components are experiencing issues. Check the details below.');
+                    message.addClass('text-warning');
+                    break;
+                case 'FAILOVER':
+                    message.text('System is in failover mode. Using backup systems.');
+                    message.addClass('text-warning');
+                    break;
+                case 'RECOVERY':
+                    message.text('System is recovering from failures. Check the details below.');
+                    message.addClass('text-warning');
+                    break;
+                case 'EMERGENCY':
+                    message.text('CRITICAL FAILURE! Emergency action required.');
+                    message.addClass('text-danger');
+                    break;
+                default:
+                    message.text('Unknown failover state.');
+            }
+        }
+        // Function to update component status
+        function updateComponentStatus(components) {
+            const container = $('#component-container');
+            container.empty();
+            for (const [name, component] of Object.entries(components)) {
+                const col = $('<div class="col-md-4 mb-3"></div>');
+                const card = $('<div class="card failover-card"></div>');
+                // Add status class
+                card.addClass('component-' + component.status.toLowerCase());
+                // Card header
+                const cardHeader = $('<div class="card-header d-flex justify-content-between align-items-center"></div>');
+                cardHeader.append(`<h6 class="mb-0">${formatComponentName(name)}</h6>`);
+                // Critical badge
+                if (component.critical) {
+                    cardHeader.append('<span class="badge bg-danger">Critical</span>');
+                }
+                card.append(cardHeader);
+                // Card body
+                const cardBody = $('<div class="card-body"></div>');
+                // Status
+                const statusRow = $('<div class="d-flex justify-content-between mb-2"></div>');
+                statusRow.append('<span>Status:</span>');
+                statusRow.append(`<span class="badge ${getStatusBadgeClass(component.status)}">${formatComponentStatus(component.status)}</span>`);
+                cardBody.append(statusRow);
+                // Failure count
+                const failureRow = $('<div class="d-flex justify-content-between mb-2"></div>');
+                failureRow.append('<span>Failures:</span>');
+                failureRow.append(`<span>${component.failure_count}</span>`);
+                cardBody.append(failureRow);
+                // Last check
+                const lastCheckRow = $('<div class="d-flex justify-content-between mb-2"></div>');
+                lastCheckRow.append('<span>Last Check:</span>');
+                lastCheckRow.append(`<span>${formatTime(component.last_check)}</span>`);
+                cardBody.append(lastCheckRow);
+                // Recovery attempts
+                const recoveryRow = $('<div class="d-flex justify-content-between mb-2"></div>');
+                recoveryRow.append('<span>Recovery Attempts:</span>');
+                recoveryRow.append(`<span>${component.recovery_attempts}</span>`);
+                cardBody.append(recoveryRow);
+                // Actions
+                const actionsRow = $('<div class="d-flex justify-content-end mt-3"></div>');
+                // Reset button
+                const resetButton = $('<button class="btn btn-sm btn-outline-primary reset-component" data-component="' + name + '">Reset</button>');
+                actionsRow.append(resetButton);
+                cardBody.append(actionsRow);
+                card.append(cardBody);
+                col.append(card);
+                container.append(col);
+            }
+            // Add reset component event handlers
+            $('.reset-component').click(function() {
+                const component = $(this).data('component');
+                showResetComponentModal(component);
+            });
+        }
+        // Function to update failover configuration
+        function updateFailoverConfig(config) {
+            $('#failover-enabled').prop('checked', config.enabled);
+            $('#auto-recovery-enabled').prop('checked', config.auto_recovery);
+            $('#emergency-shutdown-enabled').prop('checked', config.emergency_shutdown);
+            $('#notification-enabled').prop('checked', config.notification_enabled);
+            $('#max-recovery-attempts').val(config.max_recovery_attempts);
+            $('#recovery-backoff').val(config.recovery_backoff);
+        }
+        // Function to update recovery history
+        function updateRecoveryHistory(history) {
+            const tbody = $('#recovery-history-body');
+            tbody.empty();
+            if (!history || history.length === 0) {
+                tbody.html('<tr><td colspan="6" class="text-center">No recovery history available</td></tr>');
+                return;
+            }
+            for (const record of history) {
+                const row = $('<tr></tr>');
+                // Time
+                row.append(`<td>${formatTime(record.timestamp)}</td>`);
+                // Component
+                row.append(`<td>${formatComponentName(record.component)}</td>`);
+                // Status
+                row.append(`<td><span class="badge ${getStatusBadgeClass(record.status)}">${formatComponentStatus(record.status)}</span></td>`);
+                // Attempt
+                row.append(`<td>${record.attempt}</td>`);
+                // Result
+                const resultBadge = record.success ? 
+                    '<span class="badge bg-success">Success</span>' : 
+                    '<span class="badge bg-danger">Failed</span>';
+                row.append(`<td>${resultBadge}</td>`);
+                // Duration
+                row.append(`<td>${record.duration.toFixed(2)} ms</td>`);
+                tbody.append(row);
+            }
+        }
+        // Function to save failover configuration
+        function saveFailoverConfig() {
+            const config = {
+                enabled: $('#failover-enabled').is(':checked'),
+                auto_recovery: $('#auto-recovery-enabled').is(':checked'),
+                emergency_shutdown: $('#emergency-shutdown-enabled').is(':checked'),
+                notification_enabled: $('#notification-enabled').is(':checked'),
+                max_recovery_attempts: parseInt($('#max-recovery-attempts').val()),
+                recovery_backoff: parseInt($('#recovery-backoff').val())
+            };
+            $.ajax({
+                url: '/api/failover/config',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(config),
+                success: function(data) {
+                    if (data.status === 'OK') {
+                        showToast('Failover configuration saved successfully', 'success');
+                        fetchFailoverStatus();
+                    } else {
+                        showToast('Error saving failover configuration: ' + data.message, 'error');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    showToast('Error saving failover configuration: ' + error, 'error');
+                }
+            });
+        }
+        // Function to perform emergency shutdown
+        function performEmergencyShutdown() {
+            $.ajax({
+                url: '/api/failover/emergency_shutdown',
+                type: 'POST',
+                success: function(data) {
+                    if (data.status === 'OK') {
+                        showToast('Emergency shutdown initiated', 'success');
+                        $('#emergency-shutdown-modal').modal('hide');
+                        // Refresh status after a short delay
+                        setTimeout(fetchFailoverStatus, 2000);
+                    } else {
+                        showToast('Error initiating emergency shutdown: ' + data.message, 'error');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    showToast('Error initiating emergency shutdown: ' + error, 'error');
+                }
+            });
+        }
+        // Function to show reset component modal
+        function showResetComponentModal(component) {
+            currentResetComponent = component;
+            $('#reset-component-name').text(formatComponentName(component));
+            $('#component-reset-modal').modal('show');
+        }
+        // Confirm component reset button click handler
+        $('#confirm-component-reset').click(function() {
+            if (!currentResetComponent) return;
+            $.ajax({
+                url: '/api/failover/reset_component',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ component: currentResetComponent }),
+                success: function(data) {
+                    if (data.status === 'OK') {
+                        showToast(`Component ${formatComponentName(currentResetComponent)} reset successfully`, 'success');
+                        $('#component-reset-modal').modal('hide');
+                        // Refresh status after a short delay
+                        setTimeout(fetchFailoverStatus, 1000);
+                    } else {
+                        showToast('Error resetting component: ' + data.message, 'error');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    showToast('Error resetting component: ' + error, 'error');
+                }
+            });
+        });
+        // Helper function to format failover state
+        function formatFailoverState(state) {
+            return state.charAt(0) + state.slice(1).toLowerCase();
+        }
+        // Helper function to format component name
+        function formatComponentName(name) {
+            return name.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+        }
+        // Helper function to format component status
+        function formatComponentStatus(status) {
+            return status.charAt(0) + status.slice(1).toLowerCase();
+        }
+        // Helper function to get status badge class
+        function getStatusBadgeClass(status) {
+            switch (status.toLowerCase()) {
+                case 'healthy':
+                    return 'bg-success';
+                case 'warning':
+                    return 'bg-warning';
+                case 'critical':
+                    return 'bg-danger';
+                case 'failed':
+                    return 'bg-danger';
+                case 'recovering':
+                    return 'bg-info';
+                default:
+                    return 'bg-secondary';
+            }
+        }
+        // Helper function to format time
+        function formatTime(timeString) {
+            if (!timeString) return 'Never';
+            const date = new Date(timeString);
+            return date.toLocaleString();
+        }
+    });
+</script>
+{% endblock %}

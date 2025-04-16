@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Login - Bybit Trading Bot{% endblock %}
+{% block extra_css %}
+<style>
+    .login-container {
+        min-height: calc(100vh - 200px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .login-card {
+        max-width: 400px;
+        width: 100%;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+    }
+    .login-header {
+        padding: 25px 30px;
+        text-align: center;
+        background: linear-gradient(135deg, var(--primary-color) 0%, #4a8eff 100%);
+    }
+    .login-header h3 {
+        margin: 0;
+        color: white;
+        font-weight: 600;
+    }
+    .login-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        color: white;
+    }
+    .login-body {
+        padding: 30px;
+    }
+    .form-control {
+        padding: 12px 15px;
+        height: auto;
+        font-size: 1rem;
+        border-radius: 8px;
+    }
+    .form-control:focus {
+        box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.25);
+    }
+    .form-label {
+        font-weight: 500;
+        margin-bottom: 8px;
+    }
+    .btn-login {
+        padding: 12px;
+        font-weight: 600;
+        font-size: 1rem;
+        border-radius: 8px;
+    }
+</style>
+{% endblock %}
+{% block content %}
+<div class="login-container">
+    <div class="login-card">
+        <div class="login-header">
+            <i class="fas fa-robot login-icon"></i>
+            <h3>Bybit Trading Bot</h3>
+        </div>
+        <div class="login-body">
+            <h4 class="text-center mb-4">Login to Dashboard</h4>
+            <form method="POST" action="{{ url_for('auth.login') }}">
+                {{ form.csrf_token }}
+                <div class="mb-4">
+                    {{ form.username.label(class="form-label") }}
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-user"></i></span>
+                        {{ form.username(class="form-control", placeholder="Enter username") }}
+                    </div>
+                    {% for error in form.username.errors %}
+                    <div class="text-danger mt-1">{{ error }}</div>
+                    {% endfor %}
+                </div>
+                <div class="mb-4">
+                    {{ form.password.label(class="form-label") }}
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                        {{ form.password(class="form-control", placeholder="Enter password") }}
+                    </div>
+                    {% for error in form.password.errors %}
+                    <div class="text-danger mt-1">{{ error }}</div>
+                    {% endfor %}
+                </div>
+                <div class="mb-4 form-check">
+                    {{ form.remember_me(class="form-check-input") }}
+                    {{ form.remember_me.label(class="form-check-label") }}
+                </div>
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-primary btn-login">
+                        <i class="fas fa-sign-in-alt me-2"></i>Login
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

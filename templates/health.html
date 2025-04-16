@@ -1,0 +1,402 @@
+{% extends "base.html" %}
+{% block title %}Health Check Dashboard{% endblock %}
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="mb-4">Health Check Dashboard</h1>
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">System Status</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="card mb-3">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">Overall Status</h5>
+                                    <div id="overall-status" class="status-indicator">
+                                        <span class="badge badge-pill badge-secondary">Unknown</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card mb-3">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">Uptime</h5>
+                                    <p id="uptime" class="lead">Loading...</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card mb-3">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">Last Check</h5>
+                                    <p id="last-check" class="lead">Loading...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">Component Status</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row" id="component-status">
+                        <div class="col-md-4 mb-3">
+                            <div class="card">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">Loading...</h5>
+                                    <div class="status-indicator">
+                                        <span class="badge badge-pill badge-secondary">Unknown</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">System Metrics</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card mb-3">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">CPU Usage</h5>
+                                    <div class="progress mb-2">
+                                        <div id="cpu-progress" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+                                    </div>
+                                    <p id="cpu-usage" class="lead">Loading...</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card mb-3">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">Memory Usage</h5>
+                                    <div class="progress mb-2">
+                                        <div id="memory-progress" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+                                    </div>
+                                    <p id="memory-usage" class="lead">Loading...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">API Metrics</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card mb-3">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">API Response Time</h5>
+                                    <p id="api-response-time" class="lead">Loading...</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card mb-3">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">API Success Rate</h5>
+                                    <div class="progress mb-2">
+                                        <div id="api-success-progress" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+                                    </div>
+                                    <p id="api-success-rate" class="lead">Loading...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">Trading Metrics</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="card mb-3">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">Total Trades</h5>
+                                    <p id="trades-total" class="lead">Loading...</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card mb-3">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">Win Rate</h5>
+                                    <div class="progress mb-2">
+                                        <div id="win-rate-progress" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+                                    </div>
+                                    <p id="win-rate" class="lead">Loading...</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card mb-3">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">Profit/Loss</h5>
+                                    <p id="profit-loss" class="lead">Loading...</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card mb-3">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">Failed Trades</h5>
+                                    <p id="trades-failed" class="lead">Loading...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">Issues</h5>
+                </div>
+                <div class="card-body">
+                    <ul id="issues-list" class="list-group">
+                        <li class="list-group-item text-center">No issues detected</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+{{ super() }}
+<script>
+    // Function to update health check dashboard
+    function updateHealthDashboard() {
+        // Fetch health check summary
+        fetch('/api/health')
+            .then(response => response.json())
+            .then(data => {
+                // Update overall status
+                const overallStatus = document.getElementById('overall-status');
+                overallStatus.innerHTML = getStatusBadge(data.status);
+                // Update uptime and last check
+                document.getElementById('uptime').textContent = data.uptime;
+                document.getElementById('last-check').textContent = formatDateTime(data.last_check);
+                // Update component status
+                updateComponentStatus(data.components);
+                // Update issues list
+                updateIssuesList(data.issues);
+            })
+            .catch(error => {
+                console.error('Error fetching health check summary:', error);
+            });
+        // Fetch performance metrics
+        fetch('/api/health/performance')
+            .then(response => response.json())
+            .then(data => {
+                // Update system metrics
+                updateSystemMetrics(data);
+                // Update API metrics
+                updateApiMetrics(data);
+                // Update trading metrics
+                updateTradingMetrics(data.trading_metrics);
+            })
+            .catch(error => {
+                console.error('Error fetching performance metrics:', error);
+            });
+    }
+    // Function to update component status
+    function updateComponentStatus(components) {
+        const componentStatus = document.getElementById('component-status');
+        componentStatus.innerHTML = '';
+        for (const [name, status] of Object.entries(components)) {
+            const card = document.createElement('div');
+            card.className = 'col-md-4 mb-3';
+            card.innerHTML = `
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">${formatComponentName(name)}</h5>
+                        <div class="status-indicator">
+                            ${getStatusBadge(status.status)}
+                        </div>
+                        <p class="card-text">
+                            <small class="text-muted">
+                                Last success: ${status.last_success ? formatDateTime(status.last_success) : 'Never'}
+                            </small>
+                        </p>
+                        <p class="card-text">
+                            <small class="text-muted">
+                                Failures: ${status.failures}
+                            </small>
+                        </p>
+                    </div>
+                </div>
+            `;
+            componentStatus.appendChild(card);
+        }
+    }
+    // Function to update system metrics
+    function updateSystemMetrics(data) {
+        // Update CPU usage
+        const cpuUsage = data.cpu_avg.toFixed(1);
+        document.getElementById('cpu-usage').textContent = `${cpuUsage}%`;
+        const cpuProgress = document.getElementById('cpu-progress');
+        cpuProgress.style.width = `${cpuUsage}%`;
+        cpuProgress.textContent = `${cpuUsage}%`;
+        cpuProgress.setAttribute('aria-valuenow', cpuUsage);
+        // Update memory usage
+        const memoryUsage = data.memory_avg.toFixed(1);
+        document.getElementById('memory-usage').textContent = `${memoryUsage}%`;
+        const memoryProgress = document.getElementById('memory-progress');
+        memoryProgress.style.width = `${memoryUsage}%`;
+        memoryProgress.textContent = `${memoryUsage}%`;
+        memoryProgress.setAttribute('aria-valuenow', memoryUsage);
+        // Set progress bar colors based on usage
+        cpuProgress.className = `progress-bar ${getProgressBarClass(cpuUsage)}`;
+        memoryProgress.className = `progress-bar ${getProgressBarClass(memoryUsage)}`;
+    }
+    // Function to update API metrics
+    function updateApiMetrics(data) {
+        // Update API response time
+        document.getElementById('api-response-time').textContent = `${data.api_response_time_avg.toFixed(1)} ms`;
+        // Update API success rate
+        const successRate = data.api_success_rate.toFixed(1);
+        document.getElementById('api-success-rate').textContent = `${successRate}%`;
+        const successProgress = document.getElementById('api-success-progress');
+        successProgress.style.width = `${successRate}%`;
+        successProgress.textContent = `${successRate}%`;
+        successProgress.setAttribute('aria-valuenow', successRate);
+        // Set progress bar color based on success rate
+        successProgress.className = `progress-bar ${getSuccessRateClass(successRate)}`;
+    }
+    // Function to update trading metrics
+    function updateTradingMetrics(data) {
+        // Update total trades
+        document.getElementById('trades-total').textContent = data.trades_total;
+        // Update win rate
+        const winRate = data.win_rate.toFixed(1);
+        document.getElementById('win-rate').textContent = `${winRate}%`;
+        const winRateProgress = document.getElementById('win-rate-progress');
+        winRateProgress.style.width = `${winRate}%`;
+        winRateProgress.textContent = `${winRate}%`;
+        winRateProgress.setAttribute('aria-valuenow', winRate);
+        // Set progress bar color based on win rate
+        winRateProgress.className = `progress-bar ${getWinRateClass(winRate)}`;
+        // Update profit/loss
+        const profitLoss = data.profit_loss.toFixed(2);
+        const profitLossElement = document.getElementById('profit-loss');
+        profitLossElement.textContent = `${profitLoss > 0 ? '+' : ''}${profitLoss} USDT`;
+        profitLossElement.className = `lead ${profitLoss > 0 ? 'text-success' : profitLoss < 0 ? 'text-danger' : ''}`;
+        // Update failed trades
+        document.getElementById('trades-failed').textContent = data.trades_failed;
+    }
+    // Function to update issues list
+    function updateIssuesList(issues) {
+        const issuesList = document.getElementById('issues-list');
+        if (issues.length === 0) {
+            issuesList.innerHTML = '<li class="list-group-item text-center">No issues detected</li>';
+            return;
+        }
+        issuesList.innerHTML = '';
+        issues.forEach(issue => {
+            const li = document.createElement('li');
+            li.className = 'list-group-item list-group-item-warning';
+            li.textContent = issue;
+            issuesList.appendChild(li);
+        });
+    }
+    // Helper function to format component name
+    function formatComponentName(name) {
+        return name.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+    }
+    // Helper function to format date and time
+    function formatDateTime(dateTimeString) {
+        if (!dateTimeString) return 'N/A';
+        const date = new Date(dateTimeString);
+        return date.toLocaleString();
+    }
+    // Helper function to get status badge
+    function getStatusBadge(status) {
+        let badgeClass = 'badge-secondary';
+        switch (status.toLowerCase()) {
+            case 'ok':
+                badgeClass = 'badge-success';
+                break;
+            case 'warning':
+                badgeClass = 'badge-warning';
+                break;
+            case 'error':
+                badgeClass = 'badge-danger';
+                break;
+        }
+        return `<span class="badge badge-pill ${badgeClass}">${status.toUpperCase()}</span>`;
+    }
+    // Helper function to get progress bar class based on usage
+    function getProgressBarClass(usage) {
+        if (usage < 50) return 'bg-success';
+        if (usage < 80) return 'bg-warning';
+        return 'bg-danger';
+    }
+    // Helper function to get progress bar class based on success rate
+    function getSuccessRateClass(rate) {
+        if (rate >= 95) return 'bg-success';
+        if (rate >= 80) return 'bg-warning';
+        return 'bg-danger';
+    }
+    // Helper function to get progress bar class based on win rate
+    function getWinRateClass(rate) {
+        if (rate >= 60) return 'bg-success';
+        if (rate >= 40) return 'bg-warning';
+        return 'bg-danger';
+    }
+    // Update health dashboard on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        updateHealthDashboard();
+        // Update health dashboard every 30 seconds
+        setInterval(updateHealthDashboard, 30000);
+    });
+    // Socket.IO event handler for health updates
+    if (typeof io !== 'undefined') {
+        const socket = io();
+        socket.on('health_update', function(data) {
+            // Update overall status
+            const overallStatus = document.getElementById('overall-status');
+            overallStatus.innerHTML = getStatusBadge(data.status);
+            // Update uptime and last check
+            document.getElementById('uptime').textContent = data.uptime;
+            document.getElementById('last-check').textContent = formatDateTime(data.last_check);
+            // Update component status
+            updateComponentStatus(data.components);
+            // Update issues list
+            updateIssuesList(data.issues);
+        });
+    }
+</script>
+{% endblock %}

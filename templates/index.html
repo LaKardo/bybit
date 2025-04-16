@@ -1,0 +1,502 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>Dashboard</h5>
+                    <div>
+                        <button class="btn btn-sm btn-outline-primary me-2" id="refresh-all">
+                            <i class="fas fa-sync-alt me-1"></i>Refresh All
+                        </button>
+                        <div class="form-check form-switch d-inline-block me-2">
+                            <input class="form-check-input" type="checkbox" id="auto-refresh-toggle" checked>
+                            <label class="form-check-label" for="auto-refresh-toggle">Auto-refresh</label>
+                        </div>
+                        <div class="dropdown d-inline-block">
+                            <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" id="exportDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-download me-1"></i>Export
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="exportDropdown">
+                                <li><a class="dropdown-item" href="#" id="export-trades-json">Trade History (JSON)</a></li>
+                                <li><a class="dropdown-item" href="#" id="export-trades-csv">Trade History (CSV)</a></li>
+                                <li><a class="dropdown-item" href="#" id="export-settings">Bot Settings</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="status-card">
+                                <div class="status-label">Bot Status</div>
+                                <div class="status-value" id="bot-status">
+                                    <span class="badge bg-secondary"><i class="fas fa-question-circle me-1"></i>UNKNOWN</span>
+                                </div>
+                                <div class="status-actions mt-2">
+                                    <button class="btn btn-sm btn-success me-1" id="start-bot">
+                                        <i class="fas fa-play me-1"></i>Start
+                                    </button>
+                                    <button class="btn btn-sm btn-danger me-1" id="stop-bot" disabled>
+                                        <i class="fas fa-stop me-1"></i>Stop
+                                    </button>
+                                    <button class="btn btn-sm btn-warning" id="close-positions" disabled>
+                                        <i class="fas fa-times-circle me-1"></i>Close All
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="status-card">
+                                <div class="status-label">Trading Pair</div>
+                                <div class="status-value" id="trading-pair">Loading...</div>
+                                <div class="status-label mt-2">Timeframe</div>
+                                <div class="status-value" id="timeframe">Loading...</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="status-card">
+                                <div class="status-label">Trading Mode</div>
+                                <div class="status-value" id="trading-mode">Loading...</div>
+                                <div class="status-label mt-2">Signal</div>
+                                <div class="status-value" id="signal">
+                                    <span class="signal-badge signal-none"><i class="fas fa-minus me-1"></i>NONE</span>
+                                </div>
+                                <div class="status-info" id="signal-time">Last update: --:--:--</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="status-card">
+                                <div class="status-label">Current Price</div>
+                                <div class="status-value price-value" id="current-price">$0.00</div>
+                                <div class="d-flex justify-content-between">
+                                    <div class="status-info" id="price-updated">Updated: --:--:--</div>
+                                    <div class="status-info" id="price-change">0.00%</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Market Data</h5>
+                    <div>
+                        <div class="btn-group btn-group-sm me-2" role="group" aria-label="Timeframe">
+                            <button type="button" class="btn btn-outline-primary timeframe-btn" id="tf-1">1m</button>
+                            <button type="button" class="btn btn-outline-primary timeframe-btn" id="tf-5">5m</button>
+                            <button type="button" class="btn btn-outline-primary timeframe-btn active" id="tf-15">15m</button>
+                            <button type="button" class="btn btn-outline-primary timeframe-btn" id="tf-60">1h</button>
+                            <button type="button" class="btn btn-outline-primary timeframe-btn" id="tf-240">4h</button>
+                            <button type="button" class="btn btn-outline-primary timeframe-btn" id="tf-D">1d</button>
+                        </div>
+                        <div class="btn-group btn-group-sm chart-toolbar" role="group" aria-label="Chart Tools">
+                            <button type="button" class="btn btn-outline-primary" id="chart-type-toggle" title="Toggle Chart Type">
+                                <i class="fas fa-chart-line"></i>
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" id="toggle-indicators" title="Toggle Indicators">
+                                <i class="fas fa-chart-area"></i>
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" id="reset-zoom" title="Reset Zoom">
+                                <i class="fas fa-search"></i>
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" id="chart-settings" title="Chart Settings">
+                                <i class="fas fa-cog"></i>
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" id="refresh-chart" title="Refresh Chart">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <ul class="nav nav-tabs" id="marketTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="price-tab" data-bs-toggle="tab" data-bs-target="#price" type="button" role="tab" aria-controls="price" aria-selected="true">Price</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="indicators-tab" data-bs-toggle="tab" data-bs-target="#indicators" type="button" role="tab" aria-controls="indicators" aria-selected="false">Indicators</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="volume-tab" data-bs-toggle="tab" data-bs-target="#volume" type="button" role="tab" aria-controls="volume" aria-selected="false">Volume</button>
+                        </li>
+                    </ul>
+                    <div class="tab-content mt-3" id="marketTabsContent">
+                        <div class="tab-pane fade show active" id="price" role="tabpanel" aria-labelledby="price-tab">
+                            <div class="chart-container">
+                                <canvas id="price-chart"></canvas>
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="indicators" role="tabpanel" aria-labelledby="indicators-tab">
+                            <div class="chart-container">
+                                <canvas id="indicators-chart"></canvas>
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="volume" role="tabpanel" aria-labelledby="volume-tab">
+                            <div class="chart-container">
+                                <canvas id="volume-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-md-3">
+                            <div class="market-info-card">
+                                <div class="market-info-label">24h High</div>
+                                <div class="market-info-value" id="high-price">$0.00</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="market-info-card">
+                                <div class="market-info-label">24h Low</div>
+                                <div class="market-info-value" id="low-price">$0.00</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="market-info-card">
+                                <div class="market-info-label">24h Volume</div>
+                                <div class="market-info-value" id="volume">0</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="market-info-card">
+                                <div class="market-info-label">24h Volume (USD)</div>
+                                <div class="market-info-value" id="volume-usd">$0.00</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-wallet me-2"></i>Account</h5>
+                    <button class="btn btn-sm btn-outline-primary" id="refresh-balance">
+                        <i class="fas fa-sync-alt me-1"></i>Refresh
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="account-info-card">
+                                <div class="account-info-label">Available Balance</div>
+                                <div class="account-info-value" id="available-balance">0.00 USDT</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="account-info-card">
+                                <div class="account-info-label">Equity</div>
+                                <div class="account-info-value" id="equity">0.00 USDT</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-md-6">
+                            <div class="account-info-card">
+                                <div class="account-info-label">Used Margin</div>
+                                <div class="account-info-value" id="used-margin">0.00 USDT</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="account-info-card">
+                                <div class="account-info-label">Unrealized P&L</div>
+                                <div class="account-info-value" id="unrealized-pnl">0.00 USDT</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-exchange-alt me-2"></i>Positions</h5>
+                    <button class="btn btn-sm btn-outline-primary" id="refresh-positions">
+                        <i class="fas fa-sync-alt me-1"></i>Refresh
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="positions-container"></div>
+                    <div id="positions-table" style="display: none;"></div>
+                    <div id="no-positions" class="text-center py-5">
+                        <i class="fas fa-info-circle fa-3x text-muted mb-3"></i>
+                        <p>No open positions</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-chart-pie me-2"></i>Performance</h5>
+                    <button class="btn btn-sm btn-outline-primary" id="refresh-performance">
+                        <i class="fas fa-sync-alt me-1"></i>Refresh
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <div class="card performance-card">
+                                <div class="card-header">Total Trades</div>
+                                <div class="card-body text-center">
+                                    <i class="fas fa-exchange-alt mb-2" style="font-size: 1.5rem; opacity: 0.7;"></i>
+                                    <div class="performance-value neutral-value" id="total-trades">0</div>
+                                    <div class="performance-label">Completed trades</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card performance-card">
+                                <div class="card-header">Win Rate</div>
+                                <div class="card-body text-center">
+                                    <i class="fas fa-trophy mb-2" style="font-size: 1.5rem; opacity: 0.7;"></i>
+                                    <div class="performance-value neutral-value" id="win-rate">0%</div>
+                                    <div class="performance-label">Winning trades percentage</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card performance-card">
+                                <div class="card-header">Profit Factor</div>
+                                <div class="card-body text-center">
+                                    <i class="fas fa-balance-scale mb-2" style="font-size: 1.5rem; opacity: 0.7;"></i>
+                                    <div class="performance-value neutral-value" id="profit-factor">0.00</div>
+                                    <div class="performance-label">Gross profit / gross loss</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card performance-card">
+                                <div class="card-header">Total P&L</div>
+                                <div class="card-body text-center">
+                                    <i class="fas fa-chart-line mb-2" style="font-size: 1.5rem; opacity: 0.7;"></i>
+                                    <div class="performance-value neutral-value" id="total-pnl">0.00 USDT</div>
+                                    <div class="performance-label">Cumulative profit/loss</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="equity-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-list-alt me-2"></i>Log</h5>
+                <div>
+                    <button class="btn btn-sm btn-outline-primary me-2" id="clear-log">
+                        <i class="fas fa-eraser me-1"></i>Clear
+                    </button>
+                    <button class="btn btn-sm btn-outline-primary" id="export-log">
+                        <i class="fas fa-download me-1"></i>Export
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="log-container" id="log-container">
+                    <div class="text-center py-5">
+                        <i class="fas fa-clipboard-list mb-3" style="font-size: 2rem; opacity: 0.3;"></i>
+                        <p>No log entries yet</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="chart-settings-modal" tabindex="-1" aria-labelledby="chart-settings-modal-label" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="chart-settings-modal-label">Chart Settings</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="chart-settings-form">
+                    <div class="mb-3">
+                        <label class="form-label">Chart Type</label>
+                        <div class="btn-group w-100" role="group">
+                            <input type="radio" class="btn-check" name="chartType" id="chart-type-candlestick" value="candlestick" autocomplete="off" checked>
+                            <label class="btn btn-outline-primary" for="chart-type-candlestick">Candlestick</label>
+                            <input type="radio" class="btn-check" name="chartType" id="chart-type-line" value="line" autocomplete="off">
+                            <label class="btn btn-outline-primary" for="chart-type-line">Line</label>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Indicators</label>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="show-ema" checked>
+                            <label class="form-check-label" for="show-ema">Show EMA</label>
+                        </div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="show-volume" checked>
+                            <label class="form-check-label" for="show-volume">Show Volume</label>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="default-timeframe" class="form-label">Default Timeframe</label>
+                        <select class="form-select" id="default-timeframe">
+                            <option value="1">1m</option>
+                            <option value="3">3m</option>
+                            <option value="5">5m</option>
+                            <option value="15" selected>15m</option>
+                            <option value="30">30m</option>
+                            <option value="60">1h</option>
+                            <option value="120">2h</option>
+                            <option value="240">4h</option>
+                            <option value="360">6h</option>
+                            <option value="720">12h</option>
+                            <option value="D">1d</option>
+                            <option value="W">1w</option>
+                            <option value="M">1M</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="reset-chart-settings">Reset to Defaults</button>
+                <button type="button" class="btn btn-primary" id="save-chart-settings">Save Settings</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/luxon@3.0.1/build/global/luxon.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.2.0/dist/chartjs-adapter-luxon.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@0.1.1/dist/chartjs-chart-financial.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@1.2.1/dist/chartjs-plugin-zoom.min.js"></script>
+<script>
+    // Register Chart.js plugins
+    if (window.Chart) {
+        console.log('Chart.js loaded successfully');
+        
+        // Check if financial chart plugin is loaded
+        if (typeof Chart.controllers.candlestick !== 'undefined') {
+            console.log('Financial chart plugin loaded successfully');
+        } else {
+            console.error('Financial chart plugin not loaded properly');
+            // Fallback to line chart if financial plugin is not available
+            Chart.defaults.candlestick = Chart.defaults.line;
+            Chart.controllers.candlestick = Chart.controllers.line;
+        }
+        
+        // Register custom plugins for Chart.js
+        const overboughtLine = {
+            id: 'overboughtLine',
+            beforeDraw(chart) {
+                if (!chart.options || !chart.options.plugins || !chart.options.plugins.overboughtLine) return;
+                const {ctx, chartArea, scales} = chart;
+                if (!scales || !scales.rsi) return;
+                const rsiScale = scales.rsi;
+                const y = rsiScale.getPixelForValue(70);
+                ctx.save();
+                ctx.beginPath();
+                ctx.moveTo(chartArea.left, y);
+                ctx.lineTo(chartArea.right, y);
+                ctx.lineWidth = 1;
+                ctx.strokeStyle = 'rgba(255, 99, 132, 0.5)';
+                ctx.stroke();
+                ctx.restore();
+            }
+        };
+        
+        const oversoldLine = {
+            id: 'oversoldLine',
+            beforeDraw(chart) {
+                if (!chart.options || !chart.options.plugins || !chart.options.plugins.oversoldLine) return;
+                const {ctx, chartArea, scales} = chart;
+                if (!scales || !scales.rsi) return;
+                const rsiScale = scales.rsi;
+                const y = rsiScale.getPixelForValue(30);
+                ctx.save();
+                ctx.beginPath();
+                ctx.moveTo(chartArea.left, y);
+                ctx.lineTo(chartArea.right, y);
+                ctx.lineWidth = 1;
+                ctx.strokeStyle = 'rgba(75, 192, 192, 0.5)';
+                ctx.stroke();
+                ctx.restore();
+            }
+        };
+        
+        // Register the plugins
+        Chart.register(overboughtLine);
+        Chart.register(oversoldLine);
+    } else {
+        console.error('Chart.js not loaded');
+    }
+    
+    // Initialize Socket.IO
+    document.addEventListener('DOMContentLoaded', function() {
+        // Connect to Socket.IO if available
+        if (typeof io !== 'undefined') {
+            const socket = io();
+            
+            // Socket.IO event handlers
+            socket.on('connect', function() {
+                console.log('Connected to Socket.IO server');
+            });
+            
+            socket.on('disconnect', function() {
+                console.log('Disconnected from Socket.IO server');
+            });
+            
+            socket.on('log', function(data) {
+                if (typeof UI !== 'undefined' && UI.addLogEntry) {
+                    UI.addLogEntry(data.message, data.level, data.timestamp);
+                }
+            });
+            
+            socket.on('status_update', function(data) {
+                if (typeof UI !== 'undefined' && UI.updateBotStatus) {
+                    UI.updateBotStatus(data.running ? 'running' : 'stopped');
+                }
+
+                // Update trading pair and timeframe display
+                const tradingPairElement = document.getElementById('trading-pair');
+                const timeframeElement = document.getElementById('timeframe');
+                const tradingModeElement = document.getElementById('trading-mode');
+                
+                if (tradingPairElement) {
+                    tradingPairElement.textContent = data.symbol || 'BTCUSDT';
+                }
+                
+                if (timeframeElement) {
+                    timeframeElement.textContent = data.timeframe_display || data.timeframe || '15m';
+                }
+                
+                if (tradingModeElement) {
+                    tradingModeElement.textContent = data.dry_run ? 'Dry Run' : 'Live Trading';
+                }
+            });
+            
+            socket.on('trade', function(data) {
+                // Update signal display
+                if (typeof UI !== 'undefined' && UI.updateSignal) {
+                    UI.updateSignal(data.side);
+                }
+                
+                // Refresh performance metrics
+                if (typeof DataModule !== 'undefined' && DataModule.fetchPerformanceData) {
+                    DataModule.fetchPerformanceData();
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}
