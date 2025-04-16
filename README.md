@@ -1,32 +1,79 @@
-# Bybit Trading Bot
+<div align="center">
 
-A Python-based trading bot for Bybit futures trading with a focus on long-term stable trading and minimizing drawdowns.
+# 🤖 Bybit Trading Bot 📈
 
-## Features
+<img src="https://img.shields.io/badge/python-3.8+-blue.svg" alt="Python Version">
+<img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License">
+<img src="https://img.shields.io/badge/bybit-v5%20API-orange.svg" alt="Bybit API">
+<img src="https://img.shields.io/badge/status-beta-yellow.svg" alt="Status">
 
-- **Modular Architecture**: Well-structured code with separate modules for different functionalities
-- **Technical Analysis**: Uses EMA, RSI, MACD, and ATR indicators for signal generation
-- **Risk Management**: Calculates position size, stop-loss, and take-profit based on risk parameters
-- **Telegram Notifications**: Sends real-time notifications about trades and errors
-- **Detailed Logging**: Comprehensive logging of all bot activities
-- **Dry Run Mode**: Test the bot without placing real orders
+*A professional Python-based trading bot for Bybit futures trading with a focus on long-term stable trading and minimizing drawdowns.*
 
-## Requirements
+</div>
+
+## ✨ Features
+
+<table>
+  <tr>
+    <td>
+      <h3>🏗️ Architecture</h3>
+      <ul>
+        <li>Modular, well-structured code</li>
+        <li>Separate components for different functionalities</li>
+        <li>Easy to extend and customize</li>
+      </ul>
+    </td>
+    <td>
+      <h3>📊 Technical Analysis</h3>
+      <ul>
+        <li>EMA crossover strategy</li>
+        <li>RSI for overbought/oversold conditions</li>
+        <li>MACD for trend confirmation</li>
+        <li>ATR for volatility-based stops</li>
+      </ul>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <h3>🛡️ Risk Management</h3>
+      <ul>
+        <li>Fixed risk per trade (1.5%)</li>
+        <li>Dynamic position sizing</li>
+        <li>ATR-based stop losses</li>
+        <li>Risk:Reward ratio of 1:2</li>
+      </ul>
+    </td>
+    <td>
+      <h3>🔔 Notifications & Logging</h3>
+      <ul>
+        <li>Real-time Telegram notifications</li>
+        <li>Comprehensive logging system</li>
+        <li>Detailed trade information</li>
+        <li>Error and warning alerts</li>
+      </ul>
+    </td>
+  </tr>
+</table>
+
+## 🔧 Requirements
 
 - Python 3.8+
 - Bybit API key and secret
 - Telegram bot token and chat ID (optional, for notifications)
 
-## Installation
+## 🚀 Installation
+
+<details>
+<summary>Click to expand installation steps</summary>
 
 1. Clone the repository:
-   ```
+   ```bash
    git clone <repository-url>
    cd bybit-trading-bot
    ```
 
 2. Install the required packages:
-   ```
+   ```bash
    pip install -r requirements.txt
    ```
 
@@ -35,8 +82,12 @@ A Python-based trading bot for Bybit futures trading with a focus on long-term s
    - Set trading parameters
    - Configure risk management settings
    - Add Telegram bot token and chat ID (optional)
+</details>
 
-## Configuration
+## ⚙️ Configuration
+
+<details>
+<summary>Click to view configuration options</summary>
 
 Edit the `config.py` file to customize the bot's behavior:
 
@@ -81,74 +132,155 @@ CHECK_INTERVAL = 60  # Seconds between checks
 LOG_LEVEL = "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
 CLOSE_POSITIONS_ON_SHUTDOWN = True  # Close all positions when bot is shut down
 ```
+</details>
 
-## Usage
+## 👉 Usage
 
-1. Configure the bot by editing `config.py`
-2. Run the bot:
-   ```
-   python main.py
-   ```
+<div align="center">
 
-3. The bot will:
-   - Initialize all components
-   - Connect to Bybit API
-   - Start the main trading loop
-   - Generate signals based on the configured strategy
-   - Place orders according to the risk management rules
-   - Log all activities and send notifications
+```bash
+python main.py
+```
 
-## Trading Strategy
+</div>
 
-The bot uses a combination of technical indicators to generate trading signals:
+<div align="center">
+<img src="https://mermaid.ink/img/pako:eNp1ksFuwjAMhl_F8qkgwYGDpVWlwWACCWm7TLtEbmJYRJpUiQsM0d59KYyNbdqp-f3_sf3HGTBVEjGCXG1VZbTVxJXZkFKlNlRoLpW4Uc6QMFwbR9JCrXgJL8Oj9-Nh8Oj9Gg6GXvAcBEEQDnzfD4fBKBj5wWgcjMPR2B-Hn4Ow_-S9BuPwJQiG_tPzZzgYvfXgXlvKSVdQkbZcLKlwZLRQpLZcLUhZrpWrSRXbXFLBxYYrKrLcOlLFjnJb5Vy4Qm1JVrYgVRZcLMjYrCRZFGRMXpLKc1I2L0lnBRlXlKSKkpQrS9JFRcaWFemyImOrmnRVk7F1TXpVk3FNTXpdk2mamnTTkHFtQ7ppybi2Jd22ZFzXkt60ZPquI7PpyGy7jvSmI-O6jvS2I9N3HZm-68j0XUem7zoy_QcZKHWkdx2Zvv8HGxvKSG-5-gfGvMGK?type=png" alt="Bot Workflow" width="600">
+</div>
 
-### Long (Buy) Signal
-1. Fast EMA(20) crosses above Slow EMA(50)
-2. RSI(14) is below 70 (not overbought)
-3. MACD histogram is positive OR MACD line crosses above signal line
+### What the Bot Does:
+
+1. **Initialization**: Loads configuration and initializes all components
+2. **Data Collection**: Fetches historical price data from Bybit
+3. **Analysis**: Calculates technical indicators (EMA, RSI, MACD, ATR)
+4. **Signal Generation**: Identifies trading opportunities based on indicator conditions
+5. **Risk Calculation**: Determines position size, stop-loss, and take-profit levels
+6. **Order Execution**: Places market orders with appropriate risk parameters
+7. **Monitoring**: Continuously monitors positions and market conditions
+8. **Reporting**: Logs all activities and sends notifications via Telegram
+
+## 💸 Trading Strategy
+
+<div align="center">
+<img src="https://mermaid.ink/img/pako:eNp1kk1vgzAMhv-K5VMnFQ4cKK0qDcYmkNC2y7RL5CaGRaRJlbjAEO2_L4Wxj207Nb__x_YbZ8BUScQIcrVVldFWE1dmQ0qV2lChuVTiRjlDwnBtHEkLteIlvAyP3o-HwaP3azgYesFzEARBOPB9PxwGo2DkB6NxMA5HY38cfg7C_pP3GozDlyAY-k_Pn-Fg9NaDe20pJ11BRdpysaTCkdFCkdpytSBluVauJlVsc0kFFxuuqMhy60gVO8ptlXPhCrUlWdmCVFlwsSBjs5JkUZAxeUkqz0nZvCSdFWRcUZIqSlKuLEkXFRlbVqTLioytapJVTcbWNelVTcY1Nen1_7Oa9KYh49qGdNOScW1Lum3JuK4lvWnJ9F1HZtOR2XYd6U1HxnUd6W1Hpu86Mn3Xkem7jkzfdWT6D_5Q6kjvOjJ9_w82NpSR3nL1D8a8wYo?type=png" alt="Trading Strategy" width="700">
+</div>
+
+### Long (Buy) Signal 🔼
+1. Fast EMA(20) crosses **above** Slow EMA(50)
+2. RSI(14) is **below** 70 (not overbought)
+3. MACD histogram is **positive** OR MACD line crosses **above** signal line
 4. No active short position
 
-### Short (Sell) Signal
-1. Fast EMA(20) crosses below Slow EMA(50)
-2. RSI(14) is above 30 (not oversold)
-3. MACD histogram is negative OR MACD line crosses below signal line
+### Short (Sell) Signal 🔽
+1. Fast EMA(20) crosses **below** Slow EMA(50)
+2. RSI(14) is **above** 30 (not oversold)
+3. MACD histogram is **negative** OR MACD line crosses **below** signal line
 4. No active long position
 
-### Exit Signal
+### Exit Signal 🚪
 1. Stop-Loss or Take-Profit is hit
 2. Opposite signal appears
 
-## Risk Management
+## 💰 Risk Management
 
-The bot implements robust risk management:
+<div align="center">
+<img src="https://mermaid.ink/img/pako:eNptkstuwjAQRX9l5FVBggULSqtKg7EJJLTtMu0iGnsaLOI4sh1oEf33OoG-2M2d45m5M5kAUyURPcjVVlVGW01cmQ0pVWpDheZSiRvlDAnDtXEkLdSKl_A8PHo_HgaP3q_hYOgFz0EQBOHAd-5wGIyCkR-MxsE4HI39cfg5CPtP3mswDl-CYOg_PX-Gg9FbD-61pZx0BRVpy8WSCkdGC0Vqy9WClOVauZpUsc0lFVxsuKIiy60jVewot1XOhSvUlmRlC1JlwcWCjM1KkkVBxuQlqTwnZfOSdFaQcUVJqihJubIkXVRkbFmRLisytqpJVjUZW9ekVzUZ19Sk1zWZpqlJNw0Z1zak6-9pSbctGde1pDctmb7ryGw6MtuuI73pyLiuI73tyPRdR6bvOjJ915Hpu45M_0EGSh3pXUem7__BxoYy0luu_gHGvMGK?type=png" alt="Risk Management" width="600">
+</div>
 
-- Risk per trade: 1.5% of available balance
-- Stop-Loss: Based on ATR (Average True Range)
-- Take-Profit: Based on Risk-Reward Ratio (1:2)
-- Position sizing: Calculated to risk exactly the specified percentage
+- **Risk per trade**: 1.5% of available balance
+- **Stop-Loss**: Based on ATR (Average True Range)
+- **Take-Profit**: Based on Risk-Reward Ratio (1:2)
+- **Position sizing**: Calculated to risk exactly the specified percentage
+- **Leverage**: Used only for margin calculation, not to increase risk
 
-## Logging
+## 📝 Logging & Notifications
 
-The bot logs all activities to both console and file:
+<table>
+  <tr>
+    <td width="50%">
+      <h3>📓 Logging</h3>
+      <p>The bot logs all activities to both console and file:</p>
+      <ul>
+        <li>Trading signals with indicator values</li>
+        <li>Order placement and execution details</li>
+        <li>Balance and position updates</li>
+        <li>Errors and warnings with timestamps</li>
+      </ul>
+    </td>
+    <td width="50%">
+      <h3>📲 Telegram Notifications</h3>
+      <p>If configured, the bot sends notifications via Telegram:</p>
+      <ul>
+        <li>New trade entries with entry price, SL, and TP</li>
+        <li>Trade exits with P&L and reason</li>
+        <li>Critical errors with timestamps</li>
+        <li>Bot status updates (start/stop)</li>
+      </ul>
+    </td>
+  </tr>
+</table>
 
-- Trading signals
-- Order placement and execution
-- Balance and position updates
-- Errors and warnings
+## 📍 Project Structure
 
-## Telegram Notifications
+```
+├── main.py              # Main entry point and trading loop
+├── config.py            # Configuration parameters
+├── bybit_client.py      # API client for Bybit
+├── strategy.py          # Trading strategy implementation
+├── risk_manager.py      # Risk management and position sizing
+├── order_manager.py     # Order placement and management
+├── logger.py            # Logging functionality
+├── notifier.py          # Telegram notification system
+├── utils.py             # Utility functions
+├── requirements.txt     # Required packages
+└── README.md            # Documentation
+```
 
-If configured, the bot sends notifications via Telegram:
+## 🔥 Future Improvements
 
-- New trade entries
-- Trade exits with P&L
-- Critical errors
-- Bot status updates
+<details>
+<summary>Click to view potential enhancements</summary>
 
-## Disclaimer
+### Advanced Strategy Enhancements
+- **Multi-Timeframe Analysis**: Implement signal confirmation across multiple timeframes
+- **Volume Analysis**: Add volume-based filters to confirm trend strength
+- **Pattern Recognition**: Implement candlestick pattern recognition
+- **Machine Learning Integration**: Add predictive models for enhanced signal generation
 
-This bot is provided for educational and informational purposes only. Use it at your own risk. Cryptocurrency trading involves substantial risk and is not suitable for everyone. The developers are not responsible for any financial losses incurred from using this bot.
+### Risk Management Improvements
+- **Dynamic Risk Adjustment**: Adjust risk based on market volatility
+- **Trailing Stop-Loss**: Implement trailing stops to lock in profits
+- **Partial Take-Profits**: Allow multiple take-profit levels
+- **Drawdown Protection**: Reduce position sizes after consecutive losses
 
-## License
+### System Enhancements
+- **WebSocket Implementation**: Use WebSockets for real-time data and reduced latency
+- **Web Dashboard**: Create a web interface for monitoring and control
+- **Performance Analytics**: Add detailed performance metrics and reporting
+- **Multi-Exchange Support**: Extend to support multiple exchanges
+- **Multi-Asset Trading**: Support trading multiple assets simultaneously
+
+### Backtesting Module
+- **Historical Data Analysis**: Test strategy on historical data
+- **Performance Metrics**: Calculate Sharpe ratio, drawdown, win rate, etc.
+- **Parameter Optimization**: Find optimal parameters for the strategy
+- **Monte Carlo Simulation**: Assess strategy robustness
+</details>
+
+## ⚠️ Disclaimer
+
+<div align="center">
+
+*This bot is provided for educational and informational purposes only. Use it at your own risk. Cryptocurrency trading involves substantial risk and is not suitable for everyone. The developers are not responsible for any financial losses incurred from using this bot.*
+
+</div>
+
+## 📄 License
+
+<div align="center">
 
 This project is licensed under the MIT License - see the LICENSE file for details.
+
+<img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License">
+
+</div>
