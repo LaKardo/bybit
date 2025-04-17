@@ -1,13 +1,19 @@
 <div align="center">
 
+<img src="https://i.imgur.com/8hDYmQB.png" alt="Bybit Trading Bot Logo" width="180">
+
 # 🤖 Bybit Trading Bot 📈
 
-<img src="https://img.shields.io/badge/python-3.8+-blue.svg" alt="Python Version">
-<img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License">
-<img src="https://img.shields.io/badge/bybit-v5%20API-orange.svg" alt="Bybit API">
-<img src="https://img.shields.io/badge/status-beta-yellow.svg" alt="Status">
+[![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg?style=for-the-badge&logo=license&logoColor=white)](LICENSE)
+[![Bybit API](https://img.shields.io/badge/bybit-v5%20API-orange.svg?style=for-the-badge&logo=bitcoin&logoColor=white)](https://bybit-exchange.github.io/docs/v5/intro)
+[![Status](https://img.shields.io/badge/status-beta-yellow.svg?style=for-the-badge&logo=statuspage&logoColor=white)]()
 
 *A professional Python-based trading bot for Bybit futures trading with a focus on long-term stable trading and minimizing drawdowns.*
+
+[Features](#-features) • [Requirements](#-requirements) • [Installation](#-installation) • [Usage](#-usage) • [Strategy](#-trading-strategy) • [Risk Management](#-risk-management)
+
+<hr>
 
 </div>
 
@@ -15,54 +21,62 @@
 
 <table>
   <tr>
-    <td>
+    <td width="50%" align="center" bgcolor="#f8f9fa" style="border-radius:10px; padding:15px;">
       <h3>🏗️ Architecture</h3>
-      <ul>
-        <li>Modular, well-structured code</li>
-        <li>Separate components for different functionalities</li>
-        <li>Easy to extend and customize</li>
+      <ul align="left">
+        <li><b>Modular</b>, well-structured code</li>
+        <li><b>Separate components</b> for different functionalities</li>
+        <li><b>Easy to extend</b> and customize</li>
       </ul>
     </td>
-    <td>
+    <td width="50%" align="center" bgcolor="#f8f9fa" style="border-radius:10px; padding:15px;">
       <h3>📊 Technical Analysis</h3>
-      <ul>
-        <li>EMA crossover strategy</li>
-        <li>RSI for overbought/oversold conditions</li>
-        <li>MACD for trend confirmation</li>
-        <li>Volume analysis for trend strength confirmation</li>
-        <li>On-Balance Volume (OBV) for volume trend direction</li>
-        <li>ATR for volatility-based stops</li>
-        <li>Candlestick pattern recognition</li>
+      <ul align="left">
+        <li><b>EMA crossover</b> strategy</li>
+        <li><b>RSI</b> for overbought/oversold conditions</li>
+        <li><b>MACD</b> for trend confirmation</li>
+        <li><b>Volume analysis</b> for trend strength confirmation</li>
+        <li><b>On-Balance Volume (OBV)</b> for volume trend direction</li>
+        <li><b>ATR</b> for volatility-based stops</li>
+        <li><b>Candlestick pattern</b> recognition</li>
       </ul>
     </td>
   </tr>
   <tr>
-    <td>
+    <td width="50%" align="center" bgcolor="#f8f9fa" style="border-radius:10px; padding:15px;">
       <h3>🛡️ Risk Management</h3>
-      <ul>
-        <li>Fixed risk per trade (1.5%)</li>
-        <li>Dynamic position sizing</li>
-        <li>ATR-based stop losses</li>
-        <li>Risk:Reward ratio of 1:2</li>
+      <ul align="left">
+        <li><b>Fixed risk</b> per trade (1.5%)</li>
+        <li><b>Dynamic position</b> sizing</li>
+        <li><b>ATR-based</b> stop losses</li>
+        <li><b>Risk:Reward</b> ratio of 1:2</li>
       </ul>
     </td>
-    <td>
+    <td width="50%" align="center" bgcolor="#f8f9fa" style="border-radius:10px; padding:15px;">
       <h3>🔔 Notifications & Logging</h3>
-      <ul>
-        <li>Real-time Telegram notifications</li>
-        <li>Comprehensive logging system</li>
-        <li>Detailed trade information</li>
-        <li>Error and warning alerts</li>
+      <ul align="left">
+        <li><b>Real-time Telegram</b> notifications</li>
+        <li><b>Comprehensive</b> logging system</li>
+        <li><b>Detailed trade</b> information</li>
+        <li><b>Error and warning</b> alerts</li>
       </ul>
     </td>
   </tr>
 </table>
+
+<div align="center">
+<img src="https://i.imgur.com/waxVImv.png" alt="Colorful Divider" width="600">
+</div>
 
 ## 🔧 Requirements
 
 - Python 3.8+
 - Bybit API key and secret
 - Telegram bot token and chat ID (optional, for notifications)
+
+<div align="center">
+<img src="https://i.imgur.com/waxVImv.png" alt="Colorful Divider" width="600">
+</div>
 
 ## 🚀 Installation
 
@@ -86,6 +100,10 @@
    - Configure risk management settings
    - Add Telegram bot token and chat ID (optional)
 </details>
+
+<div align="center">
+<img src="https://i.imgur.com/waxVImv.png" alt="Colorful Divider" width="600">
+</div>
 
 ## ⚙️ Configuration
 
@@ -148,6 +166,10 @@ CLOSE_POSITIONS_ON_SHUTDOWN = True  # Close all positions when bot is shut down
 ```
 </details>
 
+<div align="center">
+<img src="https://i.imgur.com/waxVImv.png" alt="Colorful Divider" width="600">
+</div>
+
 ## 👉 Usage
 
 <div align="center">
@@ -168,6 +190,10 @@ python main.py
 6. **Order Execution**: Places market orders with appropriate risk parameters
 7. **Monitoring**: Continuously monitors positions and market conditions
 8. **Reporting**: Logs all activities and sends notifications via Telegram
+
+<div align="center">
+<img src="https://i.imgur.com/waxVImv.png" alt="Colorful Divider" width="600">
+</div>
 
 ## 💸 Trading Strategy
 
@@ -212,6 +238,10 @@ python main.py
 1. Stop-Loss or Take-Profit is hit
 2. Opposite signal appears
 
+<div align="center">
+<img src="https://i.imgur.com/waxVImv.png" alt="Colorful Divider" width="600">
+</div>
+
 ## 💰 Risk Management
 
 - **Risk per trade**: 1.5% of available balance
@@ -220,32 +250,40 @@ python main.py
 - **Position sizing**: Calculated to risk exactly the specified percentage
 - **Leverage**: Used only for margin calculation, not to increase risk
 
+<div align="center">
+<img src="https://i.imgur.com/waxVImv.png" alt="Colorful Divider" width="600">
+</div>
+
 ## 📝 Logging & Notifications
 
 <table>
   <tr>
-    <td width="50%">
+    <td width="50%" align="center" bgcolor="#f8f9fa" style="border-radius:10px; padding:15px;">
       <h3>📓 Logging</h3>
       <p>The bot logs all activities to both console and file:</p>
-      <ul>
-        <li>Trading signals with indicator values</li>
-        <li>Order placement and execution details</li>
-        <li>Balance and position updates</li>
-        <li>Errors and warnings with timestamps</li>
+      <ul align="left">
+        <li><b>Trading signals</b> with indicator values</li>
+        <li><b>Order placement</b> and execution details</li>
+        <li><b>Balance and position</b> updates</li>
+        <li><b>Errors and warnings</b> with timestamps</li>
       </ul>
     </td>
-    <td width="50%">
+    <td width="50%" align="center" bgcolor="#f8f9fa" style="border-radius:10px; padding:15px;">
       <h3>📲 Telegram Notifications</h3>
       <p>If configured, the bot sends notifications via Telegram:</p>
-      <ul>
-        <li>New trade entries with entry price, SL, and TP</li>
-        <li>Trade exits with P&L and reason</li>
-        <li>Critical errors with timestamps</li>
-        <li>Bot status updates (start/stop)</li>
+      <ul align="left">
+        <li><b>New trade entries</b> with entry price, SL, and TP</li>
+        <li><b>Trade exits</b> with P&L and reason</li>
+        <li><b>Critical errors</b> with timestamps</li>
+        <li><b>Bot status updates</b> (start/stop)</li>
       </ul>
     </td>
   </tr>
 </table>
+
+<div align="center">
+<img src="https://i.imgur.com/waxVImv.png" alt="Colorful Divider" width="600">
+</div>
 
 ## 📍 Project Structure
 
@@ -263,6 +301,10 @@ python main.py
 ├── requirements.txt       # Required packages
 └── README.md              # Documentation
 ```
+
+<div align="center">
+<img src="https://i.imgur.com/waxVImv.png" alt="Colorful Divider" width="600">
+</div>
 
 ## 🔥 Future Improvements
 
@@ -294,6 +336,10 @@ python main.py
 - **Monte Carlo Simulation**: Assess strategy robustness
 </details>
 
+<div align="center">
+<img src="https://i.imgur.com/waxVImv.png" alt="Colorful Divider" width="600">
+</div>
+
 ## ⚠️ Disclaimer
 
 <div align="center">
@@ -302,12 +348,14 @@ python main.py
 
 </div>
 
+<div align="center">
+<img src="https://i.imgur.com/waxVImv.png" alt="Colorful Divider" width="600">
+</div>
+
 ## 📄 License
 
 <div align="center">
 
 This project is licensed under the MIT License - see the LICENSE file for details.
-
-<img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License">
 
 </div>
