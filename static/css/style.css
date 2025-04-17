@@ -1,0 +1,113 @@
+/* Custom styles for Bybit Trading Bot Web Interface */
+
+body {
+    background-color: #f8f9fa;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.navbar-brand {
+    font-weight: bold;
+}
+
+.card {
+    border-radius: 10px;
+    border: none;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+}
+
+.card-header {
+    border-radius: 10px 10px 0 0 !important;
+    font-weight: bold;
+}
+
+.card-body {
+    padding: 20px;
+}
+
+.status-card {
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.status-card h4 {
+    font-weight: bold;
+}
+
+.status-card h6 {
+    font-size: 0.9rem;
+    margin-bottom: 10px;
+}
+
+.footer {
+    margin-top: 50px;
+    border-top: 1px solid #e9ecef;
+}
+
+/* Dashboard specific styles */
+.log-container {
+    background-color: #f8f9fa;
+    border-radius: 5px;
+    border: 1px solid #e9ecef;
+    padding: 10px;
+}
+
+/* Trades page specific styles */
+.trade-card h4 {
+    font-size: 1.8rem;
+    font-weight: bold;
+}
+
+/* Settings page specific styles */
+.form-label {
+    font-weight: 500;
+}
+
+.form-text {
+    font-size: 0.8rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .card-body {
+        padding: 15px;
+    }
+    
+    .status-card h4 {
+        font-size: 1.2rem;
+    }
+    
+    .trade-card h4 {
+        font-size: 1.4rem;
+    }
+}
+
+/* Animations */
+.btn {
+    transition: all 0.3s ease;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}

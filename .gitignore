@@ -1,0 +1,11 @@
+# Python cache directory and environment variables file
+__pycache__/
+.env
+
+# Logs and cache directories
+logs/
+cache/
+
+# IDE directories
+.vscode/
+.idea/

@@ -7,6 +7,7 @@ import time
 import signal
 import sys
 import os
+import threading
 from datetime import datetime
 
 import config
@@ -16,6 +17,8 @@ from bybit_client import BybitAPIClient
 from strategy import Strategy
 from risk_manager import RiskManager
 from order_manager import OrderManager
+from pattern_recognition import PatternRecognition
+from web_interface import WebInterface, emit_log, emit_status_update
 
 class TradingBot:
     """
@@ -36,6 +39,16 @@ class TradingBot:
 
         # Initialize API client
         self.bybit_client = BybitAPIClient(logger=self.logger)
+
+        # Get account information
+        account_info = self.bybit_client.get_account_info()
+        if account_info:
+            self.logger.info(f"Account type: {account_info.get('unifiedMarginStatus')}")
+            self.logger.info(f"Account mode: {account_info.get('marginMode')}")
+            self.logger.info(f"Account status: {account_info.get('accountStatus')}")
+
+        # Log account type status
+        self.logger.info("ВНИМАНИЕ: Бот настроен на работу с РЕАЛЬНЫМ СЧЕТОМ Bybit")
 
         # Initialize strategy
         self.strategy = Strategy(logger=self.logger)
@@ -61,6 +74,12 @@ class TradingBot:
         self.multi_timeframe_enabled = config.MULTI_TIMEFRAME_ENABLED
         self.confirmation_timeframes = config.CONFIRMATION_TIMEFRAMES
 
+        # WebSocket parameters
+        self.use_websocket = config.USE_WEBSOCKET
+
+        # Initialize pattern recognition
+        self.pattern_recognition = PatternRecognition(logger=self.logger)
+
         # Set up signal handlers for graceful shutdown
         signal.signal(signal.SIGINT, self.shutdown)
         signal.signal(signal.SIGTERM, self.shutdown)
@@ -68,30 +87,91 @@ class TradingBot:
         # Bot state
         self.running = False
 
+        # Initialize web interface if enabled
+        self.web_interface = None
+        if config.WEB_INTERFACE_ENABLED:
+            self.web_interface = WebInterface(bot=self, logger=self.logger)
+            self.logger.info("Web Interface initialized")
+
+        # Initialize WebSocket if enabled
+        if self.use_websocket:
+            self.logger.info("Starting WebSocket connection...")
+            if self.bybit_client.start_websocket():
+                self.logger.info("WebSocket connection started successfully")
+
+                # Subscribe to kline data for main timeframe
+                self.bybit_client.subscribe_kline(symbol=self.symbol, interval=self.timeframe)
+
+                # Subscribe to kline data for confirmation timeframes
+                if self.multi_timeframe_enabled:
+                    for tf in self.confirmation_timeframes:
+                        self.bybit_client.subscribe_kline(symbol=self.symbol, interval=tf)
+            else:
+                self.logger.error("Failed to start WebSocket connection")
+                self.use_websocket = False
+
         self.logger.info(f"Trading Bot initialized for {self.symbol} on {self.timeframe} timeframe")
-        self.logger.info(f"Dry run mode: {self.dry_run}")
+
+        # Log trading mode
+        if self.dry_run:
+            self.logger.info("Режим торговли: РЕАЛЬНЫЙ СЧЕТ с симуляцией сделок (DRY RUN)")
+        else:
+            self.logger.info("Режим торговли: РЕАЛЬНЫЙ СЧЕТ с реальным исполнением сделок")
 
         # Send startup notification
         if self.notifier:
-            mode = "DRY RUN" if self.dry_run else "LIVE TRADING"
+            mode = "DRY RUN" if self.dry_run else "РЕАЛЬНЫЙ СЧЕТ (реальная торговля)"
+
             self.notifier.notify_bot_status(
                 status="STARTED",
                 additional_info=f"Trading {self.symbol} on {self.timeframe} timeframe\nMode: {mode}"
             )
+
+        # Emit status update to web interface
+        emit_status_update({
+            'running': self.running,
+            'symbol': self.symbol,
+            'timeframe': self.timeframe,
+            'dry_run': self.dry_run,
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        })
 
     def run(self):
         """Run the main trading loop."""
         self.running = True
         self.logger.info("Starting main trading loop...")
 
+        # Emit status update to web interface
+        emit_status_update({
+            'running': self.running,
+            'symbol': self.symbol,
+            'timeframe': self.timeframe,
+            'dry_run': self.dry_run,
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        })
+
+        # Emit log message to web interface
+        emit_log("Starting main trading loop...", "info")
+
         while self.running:
             try:
-                # Get historical data for main timeframe
-                main_klines = self.bybit_client.get_klines(
-                    symbol=self.symbol,
-                    interval=self.timeframe,
-                    limit=100
-                )
+                # Get historical data for main timeframe (use WebSocket if enabled)
+                try:
+                    if self.use_websocket:
+                        main_klines = self.bybit_client.get_realtime_kline(
+                            symbol=self.symbol,
+                            interval=self.timeframe
+                        )
+                    else:
+                        main_klines = self.bybit_client.get_klines(
+                            symbol=self.symbol,
+                            interval=self.timeframe,
+                            limit=100
+                        )
+                except Exception as e:
+                    self.logger.error(f"Error getting klines data: {e}")
+                    time.sleep(self.check_interval)
+                    continue
 
                 if main_klines is None or main_klines.empty:
                     self.logger.error("Failed to get historical data for main timeframe, retrying...")
@@ -110,11 +190,22 @@ class TradingBot:
                 if self.multi_timeframe_enabled:
                     self.logger.debug(f"Fetching data for confirmation timeframes: {self.confirmation_timeframes}")
                     for tf in self.confirmation_timeframes:
-                        tf_klines = self.bybit_client.get_klines(
-                            symbol=self.symbol,
-                            interval=tf,
-                            limit=100
-                        )
+                        # Get data from API
+                        try:
+                            if self.use_websocket:
+                                tf_klines = self.bybit_client.get_realtime_kline(
+                                    symbol=self.symbol,
+                                    interval=tf
+                                )
+                            else:
+                                tf_klines = self.bybit_client.get_klines(
+                                    symbol=self.symbol,
+                                    interval=tf,
+                                    limit=100
+                                )
+                        except Exception as e:
+                            self.logger.error(f"Error getting klines data for {tf} timeframe: {e}")
+                            tf_klines = None
 
                         if tf_klines is not None and not tf_klines.empty:
                             tf_data = self.strategy.calculate_indicators(tf_klines)
@@ -187,7 +278,12 @@ class TradingBot:
                     self.order_manager.enter_position(signal, main_data)
 
                 # Get and log balance
-                balance_info = self.bybit_client.get_wallet_balance()
+                try:
+                    balance_info = self.bybit_client.get_wallet_balance()
+                except Exception as e:
+                    self.logger.error(f"Error getting wallet balance: {e}")
+                    balance_info = None
+
                 if balance_info:
                     self.logger.balance(
                         available_balance=balance_info["available_balance"],
@@ -196,7 +292,12 @@ class TradingBot:
                     )
 
                 # Get and log positions
-                positions = self.bybit_client.get_positions(self.symbol)
+                try:
+                    positions = self.bybit_client.get_positions(self.symbol)
+                except Exception as e:
+                    self.logger.error(f"Error getting positions: {e}")
+                    positions = []
+
                 if positions:
                     for position in positions:
                         size = float(position.get("size", 0))
@@ -215,28 +316,84 @@ class TradingBot:
                 time.sleep(self.check_interval)
 
             except Exception as e:
+                import traceback
+                error_details = traceback.format_exc()
                 self.logger.error(f"Error in main loop: {e}")
+                self.logger.error(f"Detailed error: {error_details}")
+
                 if self.notifier:
                     self.notifier.notify_error(f"Error in main loop: {e}")
+
+                # Emit error to web interface
+                emit_log(f"Error in main loop: {e}", "error")
+
+                # Wait before retrying
+                self.logger.info(f"Waiting {self.check_interval} seconds before retrying...")
                 time.sleep(self.check_interval)
 
-    def shutdown(self, signum=None, frame=None):
-        """Shutdown the bot gracefully."""
+
+
+    def shutdown(self, signum=None, _=None):
+        """Shutdown the bot gracefully.
+
+        Args:
+            signum (int, optional): Signal number. Defaults to None.
+            _ (object, optional): Unused frame parameter. Defaults to None.
+        """
         self.logger.info("Shutting down Trading Bot...")
         self.running = False
+
+        # Emit status update to web interface
+        emit_status_update({
+            'running': self.running,
+            'symbol': self.symbol,
+            'timeframe': self.timeframe,
+            'dry_run': self.dry_run,
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        })
+
+        # Emit log message to web interface
+        emit_log("Shutting down Trading Bot...", "info")
+
+        # Stop WebSocket if enabled
+        if self.use_websocket:
+            self.logger.info("Stopping WebSocket...")
+            self.bybit_client.stop_websocket()
+            emit_log("WebSocket stopped", "info")
 
         # Close all positions if configured
         if config.CLOSE_POSITIONS_ON_SHUTDOWN:
             self.logger.info("Closing all positions...")
             self.order_manager.exit_position(reason="SHUTDOWN")
+            emit_log("Closing all positions...", "info")
 
         # Send shutdown notification
         if self.notifier:
             self.notifier.notify_bot_status(status="STOPPED")
 
         self.logger.info("Trading Bot stopped")
-        sys.exit(0)
+        emit_log("Trading Bot stopped", "info")
+
+        # Don't exit if called from web interface
+        if signum is not None:
+            sys.exit(0)
 
 if __name__ == "__main__":
     bot = TradingBot()
+
+    # Start web interface in a separate thread if enabled
+    if config.WEB_INTERFACE_ENABLED and bot.web_interface:
+        web_thread = threading.Thread(
+            target=bot.web_interface.run,
+            kwargs={
+                'host': config.WEB_HOST,
+                'port': config.WEB_PORT,
+                'debug': config.WEB_DEBUG
+            }
+        )
+        web_thread.daemon = True
+        web_thread.start()
+        print(f"Web interface started on http://{config.WEB_HOST}:{config.WEB_PORT}")
+
+    # Start the bot
     bot.run()

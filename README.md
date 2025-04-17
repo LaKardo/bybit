@@ -9,7 +9,7 @@
 
 *A professional Python-based trading bot for Bybit futures trading with a focus on long-term stable trading and minimizing drawdowns.*
 
-[Features](#-features) • [Requirements](#-requirements) • [Installation](#-installation) • [Usage](#-usage) • [Strategy](#-trading-strategy) • [Risk Management](#-risk-management) • [Logging & Notifications](#-logging--notifications) • [Project Structure](#-project-structure) • [Future Improvements](#-future-improvements) • [Disclaimer](#-disclaimer) • [License](#-license)
+[Features](#-features) • [Requirements](#-requirements) • [Installation](#-installation) • [Usage](#-usage) • [Strategy](#-trading-strategy) • [Risk Management](#-risk-management) • [Monitoring & Control](#-monitoring--control) • [Project Structure](#-project-structure) • [Future Improvements](#-future-improvements) • [Disclaimer](#-disclaimer) • [License](#-license)
 
 <hr>
 
@@ -52,9 +52,10 @@
       </ul>
     </td>
     <td width="50%" align="center" bgcolor="#f8f9fa" style="border-radius:10px; padding:15px;">
-      <h3>🔔 Notifications & Logging</h3>
+      <h3>🔔 Monitoring & Control</h3>
       <ul align="left">
         <li><b>Real-time Telegram</b> notifications</li>
+        <li><b>Web Dashboard</b> for monitoring</li>
         <li><b>Comprehensive</b> logging system</li>
         <li><b>Detailed trade</b> information</li>
         <li><b>Error and warning</b> alerts</li>
@@ -93,8 +94,18 @@
    pip install -r requirements.txt
    ```
 
-3. Configure the bot by editing `config.py`:
-   - Add your Bybit API credentials
+3. Create a `.env` file based on the provided `.env.example`:
+   ```bash
+   cp .env.example .env
+   ```
+
+4. Edit the `.env` file to add your Bybit API credentials:
+   ```
+   BYBIT_API_KEY=your_actual_api_key_here
+   BYBIT_API_SECRET=your_actual_api_secret_here
+   ```
+
+5. Configure other bot settings by editing `config.py`:
    - Set trading parameters
    - Configure risk management settings
    - Add Telegram bot token and chat ID (optional)
@@ -112,11 +123,15 @@
 Edit the `config.py` file to customize the bot's behavior:
 
 ### API Configuration
-```python
-API_KEY = "your_api_key_here"
-API_SECRET = "your_api_secret_here"
-TESTNET = True  # Set to False for live trading
+API keys are now stored in the `.env` file for better security:
+
 ```
+# In .env file
+BYBIT_API_KEY=your_actual_api_key_here
+BYBIT_API_SECRET=your_actual_api_secret_here
+```
+
+The `config.py` file will automatically load these values from the `.env` file.
 
 ### Trading Parameters
 ```python
@@ -193,6 +208,14 @@ python main.py
 ```
 
 </div>
+
+This will start both the trading bot and the web interface (if enabled in config.py). You can access the web interface by opening a browser and navigating to:
+
+```
+http://localhost:5000
+```
+
+Or if you've configured a different host/port in config.py, use that instead.
 
 ### What the Bot Does:
 
@@ -291,11 +314,11 @@ The bot uses multiple timeframes to confirm trading signals, reducing false sign
 <img src="https://i.imgur.com/waxVImv.png" alt="Colorful Divider" width="600">
 </div>
 
-## 📝 Logging & Notifications
+## 📝 Monitoring & Control
 
 <table>
   <tr>
-    <td width="50%" align="center" bgcolor="#f8f9fa" style="border-radius:10px; padding:15px;">
+    <td width="33%" align="center" bgcolor="#f8f9fa" style="border-radius:10px; padding:15px;">
       <h3>📓 Logging</h3>
       <p>The bot logs all activities to both console and file:</p>
       <ul align="left">
@@ -305,7 +328,7 @@ The bot uses multiple timeframes to confirm trading signals, reducing false sign
         <li><b>Errors and warnings</b> with timestamps</li>
       </ul>
     </td>
-    <td width="50%" align="center" bgcolor="#f8f9fa" style="border-radius:10px; padding:15px;">
+    <td width="33%" align="center" bgcolor="#f8f9fa" style="border-radius:10px; padding:15px;">
       <h3>📲 Telegram Notifications</h3>
       <p>If configured, the bot sends notifications via Telegram:</p>
       <ul align="left">
@@ -313,6 +336,21 @@ The bot uses multiple timeframes to confirm trading signals, reducing false sign
         <li><b>Trade exits</b> with P&L and reason</li>
         <li><b>Critical errors</b> with timestamps</li>
         <li><b>Bot status updates</b> (start/stop)</li>
+      </ul>
+    </td>
+    <td width="33%" align="center" bgcolor="#f8f9fa" style="border-radius:10px; padding:15px;">
+      <h3>💻 Web Interface</h3>
+      <p>Monitor and control the bot through a web dashboard:</p>
+      <ul align="left">
+        <li><b>Real-time status</b> monitoring</li>
+        <li><b>Account balance</b> and positions</li>
+        <li><b>Interactive charts</b> with multiple timeframes</li>
+        <li><b>Technical indicators</b> visualization</li>
+        <li><b>Performance metrics</b> with equity curve</li>
+        <li><b>Trade history</b> with detailed analytics</li>
+        <li><b>Start/stop</b> the bot remotely</li>
+        <li><b>Adjust settings</b> without restarting</li>
+        <li><b>Export data</b> for external analysis</li>
       </ul>
     </td>
   </tr>
@@ -335,6 +373,20 @@ The bot uses multiple timeframes to confirm trading signals, reducing false sign
 ├── logger.py              # Logging functionality
 ├── notifier.py            # Telegram notification system
 ├── utils.py               # Utility functions
+├── web_interface.py       # Web interface for monitoring and control
+├── cache/                 # Cached data for API responses
+├── logs/                  # Log files
+│   └── trading_bot.log    # Main log file
+├── templates/             # HTML templates for web interface
+│   ├── base.html          # Base template with common layout
+│   ├── index.html         # Dashboard page
+│   ├── login.html         # Login page
+│   ├── settings.html      # Settings page
+│   └── trades.html        # Trade history page
+├── static/                # Static files for web interface
+│   ├── css/               # CSS stylesheets
+│   ├── js/                # JavaScript files
+│   └── img/               # Images
 ├── requirements.txt       # Required packages
 └── README.md              # Documentation
 ```
@@ -359,16 +411,65 @@ The bot uses multiple timeframes to confirm trading signals, reducing false sign
 
 ### System Enhancements
 - **WebSocket Implementation**: Use WebSockets for real-time data and reduced latency
-- **Web Dashboard**: Create a web interface for monitoring and control
 - **Performance Analytics**: Add detailed performance metrics and reporting
 - **Multi-Exchange Support**: Extend to support multiple exchanges
 - **Multi-Asset Trading**: Support trading multiple assets simultaneously
+
+### Web Interface Improvements
+- **User Management**: Multiple user accounts with different permission levels
+- **Mobile Responsiveness**: Optimize for mobile devices
+- **API Documentation**: Interactive API documentation
+- **Strategy Builder**: Visual interface for creating custom strategies
+- **Alerts System**: Customizable alerts for specific market conditions
 
 ### Backtesting Module
 - **Historical Data Analysis**: Test strategy on historical data
 - **Performance Metrics**: Calculate Sharpe ratio, drawdown, win rate, etc.
 - **Parameter Optimization**: Find optimal parameters for the strategy
 - **Monte Carlo Simulation**: Assess strategy robustness
+</details>
+
+## 🔄 Recent Updates
+
+<details>
+<summary>Click to view recent updates</summary>
+
+### API Client Improvements (v1.4.0)
+- **Secure API Key Storage**: Added support for storing API keys in `.env` file for better security
+- **PyBit V5 API**: Updated to use the latest Bybit V5 API for all operations
+- **WebSocket Support**: Enhanced WebSocket functionality for real-time data streaming
+- **Data Caching**: Improved caching for historical data to reduce API calls
+- **Error Handling**: Enhanced error logging and recovery mechanisms
+- **Performance Optimization**: Reduced memory usage and improved response times
+
+### Code Quality Improvements (v1.2.0)
+- **Pandas Warnings Fixed**: Updated pattern recognition code to use proper DataFrame indexing
+- **Error Handling**: Added comprehensive error handling throughout the codebase
+- **Code Documentation**: Improved code comments and documentation
+- **Unit Tests**: Added comprehensive unit tests for key components
+
+### Pattern Recognition Improvements (v1.2.0)
+- **Robust Initialization**: Added proper initialization of pattern columns
+- **Error Handling**: Improved error handling for empty or invalid data
+- **Pattern Strength Calculation**: Enhanced pattern strength calculation with better error handling
+
+### Technical Indicator Improvements (v1.2.0)
+- **Custom MACD Implementation**: Replaced pandas_ta MACD with robust custom implementation
+- **Indicator Validation**: Added validation for input data before calculating indicators
+- **Default Values**: Implemented sensible default values when calculations fail
+- **Error Handling**: Improved error handling for all technical indicators
+
+### Performance Optimizations (v1.2.0)
+- **Reduced API Calls**: Implemented caching to minimize API usage
+- **Memory Usage**: Optimized memory usage for long-running sessions
+- **Error Recovery**: Added automatic recovery from temporary API failures
+
+### Web Interface Improvements (v1.3.0)
+- **Interactive Charts**: Added real-time price charts with multiple timeframe options
+- **Technical Indicators**: Added visualization for EMA, RSI, MACD and other indicators
+- **Performance Dashboard**: Added detailed performance metrics with equity curve
+- **Data Export**: Added functionality to export trade history and settings
+- **Enhanced Controls**: Added more control options for strategy parameters
 </details>
 
 <div align="center">

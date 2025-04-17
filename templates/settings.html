@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - Bybit Trading Bot{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-cog me-2"></i>Bot Settings</h5>
+            </div>
+            <div class="card-body">
+                <form id="settings-form">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5 class="border-bottom pb-2 mb-3">Trading Parameters</h5>
+                            
+                            <div class="mb-3">
+                                <label for="symbol" class="form-label">Trading Pair</label>
+                                <input type="text" class="form-control" id="symbol" name="symbol" value="{{ config.SYMBOL }}">
+                                <div class="form-text">The trading pair to trade (e.g., BTCUSDT)</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="timeframe" class="form-label">Timeframe</label>
+                                <select class="form-select" id="timeframe" name="timeframe">
+                                    <option value="1m" {% if config.TIMEFRAME == "1m" %}selected{% endif %}>1 Minute</option>
+                                    <option value="3m" {% if config.TIMEFRAME == "3m" %}selected{% endif %}>3 Minutes</option>
+                                    <option value="5m" {% if config.TIMEFRAME == "5m" %}selected{% endif %}>5 Minutes</option>
+                                    <option value="15m" {% if config.TIMEFRAME == "15m" %}selected{% endif %}>15 Minutes</option>
+                                    <option value="30m" {% if config.TIMEFRAME == "30m" %}selected{% endif %}>30 Minutes</option>
+                                    <option value="1h" {% if config.TIMEFRAME == "1h" %}selected{% endif %}>1 Hour</option>
+                                    <option value="2h" {% if config.TIMEFRAME == "2h" %}selected{% endif %}>2 Hours</option>
+                                    <option value="4h" {% if config.TIMEFRAME == "4h" %}selected{% endif %}>4 Hours</option>
+                                    <option value="6h" {% if config.TIMEFRAME == "6h" %}selected{% endif %}>6 Hours</option>
+                                    <option value="12h" {% if config.TIMEFRAME == "12h" %}selected{% endif %}>12 Hours</option>
+                                    <option value="1d" {% if config.TIMEFRAME == "1d" %}selected{% endif %}>1 Day</option>
+                                    <option value="1w" {% if config.TIMEFRAME == "1w" %}selected{% endif %}>1 Week</option>
+                                    <option value="1M" {% if config.TIMEFRAME == "1M" %}selected{% endif %}>1 Month</option>
+                                </select>
+                                <div class="form-text">The timeframe to use for analysis</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="leverage" class="form-label">Leverage</label>
+                                <input type="number" class="form-control" id="leverage" name="leverage" value="{{ config.LEVERAGE }}" min="1" max="100">
+                                <div class="form-text">Leverage to use (1-100)</div>
+                            </div>
+                            
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" class="form-check-input" id="dry_run" name="dry_run" {% if config.DRY_RUN %}checked{% endif %}>
+                                <label class="form-check-label" for="dry_run">Dry Run Mode</label>
+                                <div class="form-text">If enabled, the bot will not place real orders</div>
+                            </div>
+                            
+                            <h5 class="border-bottom pb-2 mb-3 mt-4">Risk Management</h5>
+                            
+                            <div class="mb-3">
+                                <label for="risk_per_trade" class="form-label">Risk Per Trade (%)</label>
+                                <input type="number" class="form-control" id="risk_per_trade" name="risk_per_trade" value="{{ config.RISK_PER_TRADE * 100 }}" min="0.1" max="10" step="0.1">
+                                <div class="form-text">Percentage of balance to risk per trade</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="risk_reward_ratio" class="form-label">Risk:Reward Ratio</label>
+                                <input type="number" class="form-control" id="risk_reward_ratio" name="risk_reward_ratio" value="{{ config.RISK_REWARD_RATIO }}" min="0.5" max="5" step="0.1">
+                                <div class="form-text">Risk:Reward ratio (e.g., 2 means TP is 2x the distance of SL)</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="sl_atr_multiplier" class="form-label">Stop Loss ATR Multiplier</label>
+                                <input type="number" class="form-control" id="sl_atr_multiplier" name="sl_atr_multiplier" value="{{ config.SL_ATR_MULTIPLIER }}" min="0.5" max="5" step="0.1">
+                                <div class="form-text">Stop Loss = Entry Price +/- (ATR * Multiplier)</div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <h5 class="border-bottom pb-2 mb-3">Strategy Parameters</h5>
+                            
+                            <div class="mb-3">
+                                <label for="fast_ema" class="form-label">Fast EMA Period</label>
+                                <input type="number" class="form-control" id="fast_ema" name="fast_ema" value="{{ config.FAST_EMA }}" min="5" max="50">
+                                <div class="form-text">Period for the fast EMA</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="slow_ema" class="form-label">Slow EMA Period</label>
+                                <input type="number" class="form-control" id="slow_ema" name="slow_ema" value="{{ config.SLOW_EMA }}" min="10" max="200">
+                                <div class="form-text">Period for the slow EMA</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="rsi_period" class="form-label">RSI Period</label>
+                                <input type="number" class="form-control" id="rsi_period" name="rsi_period" value="{{ config.RSI_PERIOD }}" min="5" max="30">
+                                <div class="form-text">Period for the RSI</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="rsi_overbought" class="form-label">RSI Overbought Level</label>
+                                <input type="number" class="form-control" id="rsi_overbought" name="rsi_overbought" value="{{ config.RSI_OVERBOUGHT }}" min="50" max="90">
+                                <div class="form-text">RSI level considered overbought</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="rsi_oversold" class="form-label">RSI Oversold Level</label>
+                                <input type="number" class="form-control" id="rsi_oversold" name="rsi_oversold" value="{{ config.RSI_OVERSOLD }}" min="10" max="50">
+                                <div class="form-text">RSI level considered oversold</div>
+                            </div>
+                            
+                            <h5 class="border-bottom pb-2 mb-3 mt-4">Multi-Timeframe Analysis</h5>
+                            
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" class="form-check-input" id="multi_timeframe_enabled" name="multi_timeframe_enabled" {% if config.MULTI_TIMEFRAME_ENABLED %}checked{% endif %}>
+                                <label class="form-check-label" for="multi_timeframe_enabled">Enable Multi-Timeframe Analysis</label>
+                                <div class="form-text">If enabled, the bot will use multiple timeframes for confirmation</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="confirmation_timeframes" class="form-label">Confirmation Timeframes</label>
+                                <select class="form-select" id="confirmation_timeframes" name="confirmation_timeframes" multiple>
+                                    <option value="1m" {% if "1m" in config.CONFIRMATION_TIMEFRAMES %}selected{% endif %}>1 Minute</option>
+                                    <option value="3m" {% if "3m" in config.CONFIRMATION_TIMEFRAMES %}selected{% endif %}>3 Minutes</option>
+                                    <option value="5m" {% if "5m" in config.CONFIRMATION_TIMEFRAMES %}selected{% endif %}>5 Minutes</option>
+                                    <option value="15m" {% if "15m" in config.CONFIRMATION_TIMEFRAMES %}selected{% endif %}>15 Minutes</option>
+                                    <option value="30m" {% if "30m" in config.CONFIRMATION_TIMEFRAMES %}selected{% endif %}>30 Minutes</option>
+                                    <option value="1h" {% if "1h" in config.CONFIRMATION_TIMEFRAMES %}selected{% endif %}>1 Hour</option>
+                                    <option value="2h" {% if "2h" in config.CONFIRMATION_TIMEFRAMES %}selected{% endif %}>2 Hours</option>
+                                    <option value="4h" {% if "4h" in config.CONFIRMATION_TIMEFRAMES %}selected{% endif %}>4 Hours</option>
+                                    <option value="6h" {% if "6h" in config.CONFIRMATION_TIMEFRAMES %}selected{% endif %}>6 Hours</option>
+                                    <option value="12h" {% if "12h" in config.CONFIRMATION_TIMEFRAMES %}selected{% endif %}>12 Hours</option>
+                                    <option value="1d" {% if "1d" in config.CONFIRMATION_TIMEFRAMES %}selected{% endif %}>1 Day</option>
+                                    <option value="1w" {% if "1w" in config.CONFIRMATION_TIMEFRAMES %}selected{% endif %}>1 Week</option>
+                                </select>
+                                <div class="form-text">Timeframes to use for confirmation (hold Ctrl to select multiple)</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="mtf_alignment_required" class="form-label">Minimum Timeframe Alignment</label>
+                                <input type="number" class="form-control" id="mtf_alignment_required" name="mtf_alignment_required" value="{{ config.MTF_ALIGNMENT_REQUIRED }}" min="1" max="10">
+                                <div class="form-text">Minimum number of timeframes that must align with the signal</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-4">
+                        <div class="col-md-12 text-center">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-1"></i>Save Settings
+                            </button>
+                            <button type="reset" class="btn btn-secondary ms-2">
+                                <i class="fas fa-undo me-1"></i>Reset
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Settings form submission
+        $('#settings-form').submit(function(e) {
+            e.preventDefault();
+            
+            // Get form data
+            const formData = {
+                symbol: $('#symbol').val(),
+                timeframe: $('#timeframe').val(),
+                leverage: parseInt($('#leverage').val()),
+                dry_run: $('#dry_run').is(':checked'),
+                risk_per_trade: parseFloat($('#risk_per_trade').val()) / 100,
+                risk_reward_ratio: parseFloat($('#risk_reward_ratio').val()),
+                sl_atr_multiplier: parseFloat($('#sl_atr_multiplier').val()),
+                fast_ema: parseInt($('#fast_ema').val()),
+                slow_ema: parseInt($('#slow_ema').val()),
+                rsi_period: parseInt($('#rsi_period').val()),
+                rsi_overbought: parseInt($('#rsi_overbought').val()),
+                rsi_oversold: parseInt($('#rsi_oversold').val()),
+                multi_timeframe_enabled: $('#multi_timeframe_enabled').is(':checked'),
+                confirmation_timeframes: $('#confirmation_timeframes').val(),
+                mtf_alignment_required: parseInt($('#mtf_alignment_required').val())
+            };
+            
+            // Send settings to server
+            $.ajax({
+                url: '/api/update_settings',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(formData),
+                success: function(response) {
+                    if (response.status === 'OK') {
+                        // Show success message
+                        $('<div class="alert alert-success alert-dismissible fade show" role="alert">')
+                            .text('Settings saved successfully')
+                            .append('<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>')
+                            .prependTo('.card-body');
+                    } else {
+                        // Show error message
+                        $('<div class="alert alert-danger alert-dismissible fade show" role="alert">')
+                            .text('Failed to save settings: ' + response.message)
+                            .append('<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>')
+                            .prependTo('.card-body');
+                    }
+                },
+                error: function() {
+                    // Show error message
+                    $('<div class="alert alert-danger alert-dismissible fade show" role="alert">')
+                        .text('Failed to save settings: Server error')
+                        .append('<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>')
+                        .prependTo('.card-body');
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

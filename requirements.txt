@@ -1,7 +1,13 @@
-pybit==5.5.0
-pandas==2.1.1
-numpy==1.26.0
-python-telegram-bot==20.6
-pandas-ta==0.3.14b0
-python-dotenv==1.0.0
-ccxt==4.1.22
+# Core dependencies
+pybit>=5.0.0
+pandas
+numpy
+python-telegram-bot>=20.0
+pandas-ta
+python-dotenv
+
+# Web interface dependencies
+flask
+flask-socketio
+flask-login
+flask-wtf

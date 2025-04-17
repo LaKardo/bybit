@@ -97,11 +97,69 @@ class Strategy:
             # Calculate RSI
             df['rsi'] = ta.rsi(df['close'], length=self.rsi_period)
 
-            # Calculate MACD
-            macd = ta.macd(df['close'], fast=self.macd_fast, slow=self.macd_slow, signal=self.macd_signal)
-            df['macd'] = macd['MACD_12_26_9']
-            df['macd_signal'] = macd['MACDs_12_26_9']
-            df['macd_hist'] = macd['MACDh_12_26_9']
+            # Calculate MACD using our own implementation
+            try:
+                # Make sure we have enough data for MACD calculation
+                min_periods = max(self.macd_slow, self.macd_fast, self.macd_signal)
+                if len(df) >= min_periods:
+                    # Make sure there are no NaN values in the close price
+                    if not df['close'].isna().any():
+                        # Calculate MACD using our own implementation
+                        try:
+                            # Calculate EMAs for MACD
+                            fast_ema = df['close'].ewm(span=self.macd_fast, adjust=False).mean()
+                            slow_ema = df['close'].ewm(span=self.macd_slow, adjust=False).mean()
+
+                            # Calculate MACD line
+                            macd_line = fast_ema - slow_ema
+
+                            # Calculate signal line
+                            signal_line = macd_line.ewm(span=self.macd_signal, adjust=False).mean()
+
+                            # Calculate histogram
+                            histogram = macd_line - signal_line
+
+                            # Assign to dataframe
+                            df['macd'] = macd_line
+                            df['macd_signal'] = signal_line
+                            df['macd_hist'] = histogram
+
+                            # Fill any remaining NaN values with 0
+                            df['macd'] = df['macd'].fillna(0.0)
+                            df['macd_signal'] = df['macd_signal'].fillna(0.0)
+                            df['macd_hist'] = df['macd_hist'].fillna(0.0)
+
+                            if self.logger:
+                                self.logger.debug("MACD calculated successfully using custom implementation")
+
+                        except Exception as inner_e:
+                            if self.logger:
+                                self.logger.warning(f"Custom MACD calculation failed: {inner_e}, using default values")
+                            # Use default values
+                            df['macd'] = 0.0
+                            df['macd_signal'] = 0.0
+                            df['macd_hist'] = 0.0
+                    else:
+                        if self.logger:
+                            self.logger.warning("Close price contains NaN values, using default MACD values")
+                        # Use default values
+                        df['macd'] = 0.0
+                        df['macd_signal'] = 0.0
+                        df['macd_hist'] = 0.0
+                else:
+                    if self.logger:
+                        self.logger.warning(f"Not enough data for MACD calculation. Need at least {min_periods} rows, got {len(df)}. Using default values.")
+                    # Use default values
+                    df['macd'] = 0.0
+                    df['macd_signal'] = 0.0
+                    df['macd_hist'] = 0.0
+            except Exception as e:
+                if self.logger:
+                    self.logger.warning(f"Failed to calculate MACD: {e}, using default values")
+                # Use default values
+                df['macd'] = 0.0
+                df['macd_signal'] = 0.0
+                df['macd_hist'] = 0.0
 
             # Calculate ATR
             df['atr'] = ta.atr(df['high'], df['low'], df['close'], length=self.atr_period)
@@ -135,6 +193,13 @@ class Strategy:
         except Exception as e:
             if self.logger:
                 self.logger.error(f"Failed to calculate indicators: {e}")
+                # Log more detailed error information
+                import traceback
+                self.logger.error(f"Detailed error: {traceback.format_exc()}")
+                # Log the DataFrame info
+                if df is not None and not df.empty:
+                    self.logger.error(f"DataFrame columns: {df.columns.tolist()}")
+                    self.logger.error(f"DataFrame head: {df.head(1).to_dict()}")
             return None
 
     def generate_signal(self, df, mtf_data=None):
@@ -237,15 +302,24 @@ class Strategy:
                 score += normalized_rsi
 
             # MACD (weight: 0.25)
-            macd_current = current['macd']
-            macd_signal_current = current['macd_signal']
-            macd_hist_current = current['macd_hist']
-            macd_previous = previous['macd']
-            macd_signal_previous = previous['macd_signal']
+            try:
+                macd_current = float(current['macd'])
+                macd_signal_current = float(current['macd_signal'])
+                macd_hist_current = float(current['macd_hist'])
+                macd_previous = float(previous['macd'])
+                macd_signal_previous = float(previous['macd_signal'])
 
-            # MACD crossover
-            macd_crossover_up = macd_previous < macd_signal_previous and macd_current > macd_signal_current
-            macd_crossover_down = macd_previous > macd_signal_previous and macd_current < macd_signal_current
+                # MACD crossover
+                macd_crossover_up = macd_previous < macd_signal_previous and macd_current > macd_signal_current
+                macd_crossover_down = macd_previous > macd_signal_previous and macd_current < macd_signal_current
+            except (TypeError, ValueError, KeyError) as e:
+                if self.logger:
+                    self.logger.debug(f"MACD calculation error in analyze_timeframe: {e}, using default values")
+                macd_current = 0.0
+                macd_signal_current = 0.0
+                macd_hist_current = 0.0
+                macd_crossover_up = False
+                macd_crossover_down = False
 
             if macd_crossover_up:
                 score += 0.2
@@ -373,6 +447,17 @@ class Strategy:
             str: Signal (LONG, SHORT, NONE).
         """
         if df is None or df.empty or len(df) < 2:
+            if self.logger:
+                self.logger.warning("Cannot generate signal from single timeframe: Insufficient data")
+            return "NONE"
+
+        # Check if required indicators are present
+        required_indicators = ['ema_20', 'ema_50', 'rsi', 'macd', 'macd_signal', 'macd_hist', 'volume_ratio', 'obv_slope']
+        missing_indicators = [ind for ind in required_indicators if ind not in df.columns]
+
+        if missing_indicators:
+            if self.logger:
+                self.logger.warning(f"Cannot generate signal from single timeframe: Missing indicators {missing_indicators}")
             return "NONE"
 
         try:
@@ -387,15 +472,24 @@ class Strategy:
             slow_ema_previous = previous[f'ema_{self.slow_ema}']
 
             # Check for MACD conditions
-            macd_current = current['macd']
-            macd_signal_current = current['macd_signal']
-            macd_hist_current = current['macd_hist']
-            macd_previous = previous['macd']
-            macd_signal_previous = previous['macd_signal']
+            try:
+                macd_current = float(current['macd'])
+                macd_signal_current = float(current['macd_signal'])
+                macd_hist_current = float(current['macd_hist'])
+                macd_previous = float(previous['macd'])
+                macd_signal_previous = float(previous['macd_signal'])
 
-            # Check for MACD crossover
-            macd_crossover_up = macd_previous < macd_signal_previous and macd_current > macd_signal_current
-            macd_crossover_down = macd_previous > macd_signal_previous and macd_current < macd_signal_current
+                # Check for MACD crossover
+                macd_crossover_up = macd_previous < macd_signal_previous and macd_current > macd_signal_current
+                macd_crossover_down = macd_previous > macd_signal_previous and macd_current < macd_signal_current
+            except (TypeError, ValueError, KeyError) as e:
+                if self.logger:
+                    self.logger.debug(f"MACD calculation error in _generate_signal_from_single_timeframe: {e}, using default values")
+                macd_current = 0.0
+                macd_signal_current = 0.0
+                macd_hist_current = 0.0
+                macd_crossover_up = False
+                macd_crossover_down = False
 
             # Check for RSI conditions
             rsi_current = current['rsi']

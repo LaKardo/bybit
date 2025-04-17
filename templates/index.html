@@ -1,0 +1,1080 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Bybit Trading Bot{% endblock %}
+
+{% block extra_css %}
+<style>
+    .status-card {
+        transition: all 0.3s ease;
+    }
+    .status-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+    .chart-container {
+        height: 400px;
+    }
+    .log-container {
+        height: 300px;
+        overflow-y: auto;
+    }
+    .log-entry {
+        padding: 5px 10px;
+        border-bottom: 1px solid #eee;
+    }
+    .log-info {
+        color: #0d6efd;
+    }
+    .log-warning {
+        color: #ffc107;
+    }
+    .log-error {
+        color: #dc3545;
+    }
+    .log-debug {
+        color: #6c757d;
+    }
+    .log-timestamp {
+        font-size: 0.8rem;
+        color: #6c757d;
+    }
+    .signal-badge {
+        font-size: 0.8rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+    }
+    .signal-long {
+        background-color: rgba(40, 167, 69, 0.2);
+        color: #28a745;
+        border: 1px solid #28a745;
+    }
+    .signal-short {
+        background-color: rgba(220, 53, 69, 0.2);
+        color: #dc3545;
+        border: 1px solid #dc3545;
+    }
+    .signal-none {
+        background-color: rgba(108, 117, 125, 0.2);
+        color: #6c757d;
+        border: 1px solid #6c757d;
+    }
+    .performance-card {
+        border-radius: 0.5rem;
+        overflow: hidden;
+    }
+    .performance-card .card-header {
+        padding: 0.75rem 1rem;
+        font-weight: 600;
+    }
+    .performance-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+    }
+    .performance-label {
+        font-size: 0.8rem;
+        color: #6c757d;
+    }
+    .positive-value {
+        color: #28a745;
+    }
+    .negative-value {
+        color: #dc3545;
+    }
+    .neutral-value {
+        color: #6c757d;
+    }
+    .tab-content {
+        padding: 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-tachometer-alt me-2"></i>Bot Status</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="card status-card mb-3">
+                            <div class="card-body text-center">
+                                <h6 class="card-title text-muted">Status</h6>
+                                <h4 id="bot-status" class="mb-0">
+                                    <span class="badge bg-secondary">Loading...</span>
+                                </h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card status-card mb-3">
+                            <div class="card-body text-center">
+                                <h6 class="card-title text-muted">Trading Pair</h6>
+                                <h4 id="trading-pair" class="mb-0">Loading...</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card status-card mb-3">
+                            <div class="card-body text-center">
+                                <h6 class="card-title text-muted">Timeframe</h6>
+                                <h4 id="timeframe" class="mb-0">Loading...</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card status-card mb-3">
+                            <div class="card-body text-center">
+                                <h6 class="card-title text-muted">Mode</h6>
+                                <h4 id="trading-mode" class="mb-0">Loading...</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-md-12 text-center">
+                        <button id="start-bot" class="btn btn-success me-2" disabled>
+                            <i class="fas fa-play me-1"></i>Start Bot
+                        </button>
+                        <button id="stop-bot" class="btn btn-danger me-2" disabled>
+                            <i class="fas fa-stop me-1"></i>Stop Bot
+                        </button>
+                        <button id="close-positions" class="btn btn-warning" disabled>
+                            <i class="fas fa-times-circle me-1"></i>Close Positions
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-wallet me-2"></i>Account Balance</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card status-card mb-3">
+                            <div class="card-body text-center">
+                                <h6 class="card-title text-muted">Available Balance</h6>
+                                <h4 id="available-balance" class="mb-0">Loading...</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card status-card mb-3">
+                            <div class="card-body text-center">
+                                <h6 class="card-title text-muted">Equity</h6>
+                                <h4 id="equity" class="mb-0">Loading...</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card status-card mb-3">
+                            <div class="card-body text-center">
+                                <h6 class="card-title text-muted">Used Margin</h6>
+                                <h4 id="used-margin" class="mb-0">Loading...</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card status-card mb-3">
+                            <div class="card-body text-center">
+                                <h6 class="card-title text-muted">Unrealized PnL</h6>
+                                <h4 id="unrealized-pnl" class="mb-0">Loading...</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>Open Positions</h5>
+            </div>
+            <div class="card-body">
+                <div id="positions-container">
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Loading positions...</p>
+                    </div>
+                </div>
+                <div id="no-positions" class="text-center py-5" style="display: none;">
+                    <i class="fas fa-info-circle fa-3x text-muted mb-3"></i>
+                    <p>No open positions</p>
+                </div>
+                <div id="positions-table" style="display: none;">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Symbol</th>
+                                <th>Side</th>
+                                <th>Size</th>
+                                <th>Entry Price</th>
+                                <th>Mark Price</th>
+                                <th>PnL</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="positions-body">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>Market Overview</h5>
+                <div>
+                    <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-sm btn-light" id="timeframe-1m">1m</button>
+                        <button type="button" class="btn btn-sm btn-light" id="timeframe-5m">5m</button>
+                        <button type="button" class="btn btn-sm btn-light active" id="timeframe-15m">15m</button>
+                        <button type="button" class="btn btn-sm btn-light" id="timeframe-1h">1h</button>
+                        <button type="button" class="btn btn-sm btn-light" id="timeframe-4h">4h</button>
+                        <button type="button" class="btn btn-sm btn-light" id="timeframe-1d">1d</button>
+                    </div>
+                    <button class="btn btn-sm btn-light ms-2" id="refresh-chart">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="card status-card mb-3">
+                            <div class="card-body text-center">
+                                <h6 class="card-title text-muted">Current Price</h6>
+                                <h4 id="current-price" class="mb-0">$0.00</h4>
+                                <small id="price-updated" class="text-muted">Updated: Never</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card status-card mb-3">
+                            <div class="card-body text-center">
+                                <h6 class="card-title text-muted">24h Change</h6>
+                                <h4 id="price-change" class="mb-0">0.00%</h4>
+                                <small class="text-muted">High: <span id="high-price">$0.00</span> | Low: <span id="low-price">$0.00</span></small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card status-card mb-3">
+                            <div class="card-body text-center">
+                                <h6 class="card-title text-muted">24h Volume</h6>
+                                <h4 id="volume" class="mb-0">0.00</h4>
+                                <small id="volume-usd" class="text-muted">$0.00</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card status-card mb-3">
+                            <div class="card-body text-center">
+                                <h6 class="card-title text-muted">Signal</h6>
+                                <h4 id="signal" class="mb-0">
+                                    <span class="signal-badge signal-none">NONE</span>
+                                </h4>
+                                <small id="signal-time" class="text-muted">Last update: Never</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <ul class="nav nav-tabs" id="chart-tabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="price-tab" data-bs-toggle="tab" data-bs-target="#price-content" type="button" role="tab" aria-controls="price-content" aria-selected="true">Price Chart</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="indicators-tab" data-bs-toggle="tab" data-bs-target="#indicators-content" type="button" role="tab" aria-controls="indicators-content" aria-selected="false">Indicators</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="volume-tab" data-bs-toggle="tab" data-bs-target="#volume-content" type="button" role="tab" aria-controls="volume-content" aria-selected="false">Volume</button>
+                            </li>
+                        </ul>
+                        <div class="tab-content" id="chart-tab-content">
+                            <div class="tab-pane fade show active" id="price-content" role="tabpanel" aria-labelledby="price-tab">
+                                <div class="chart-container">
+                                    <canvas id="price-chart"></canvas>
+                                </div>
+                            </div>
+                            <div class="tab-pane fade" id="indicators-content" role="tabpanel" aria-labelledby="indicators-tab">
+                                <div class="chart-container">
+                                    <canvas id="indicators-chart"></canvas>
+                                </div>
+                            </div>
+                            <div class="tab-pane fade" id="volume-content" role="tabpanel" aria-labelledby="volume-tab">
+                                <div class="chart-container">
+                                    <canvas id="volume-chart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Performance Metrics</h5>
+                <div>
+                    <button class="btn btn-sm btn-light" id="refresh-performance">
+                        <i class="fas fa-sync-alt me-1"></i>Refresh
+                    </button>
+                    <button class="btn btn-sm btn-light ms-2" id="export-trades">
+                        <i class="fas fa-download me-1"></i>Export
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="card performance-card mb-3">
+                            <div class="card-header bg-light">Total Trades</div>
+                            <div class="card-body text-center">
+                                <div class="performance-value neutral-value" id="total-trades">0</div>
+                                <div class="performance-label">All-time trades</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card performance-card mb-3">
+                            <div class="card-header bg-light">Win Rate</div>
+                            <div class="card-body text-center">
+                                <div class="performance-value neutral-value" id="win-rate">0%</div>
+                                <div class="performance-label">Winning trades percentage</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card performance-card mb-3">
+                            <div class="card-header bg-light">Profit Factor</div>
+                            <div class="card-body text-center">
+                                <div class="performance-value neutral-value" id="profit-factor">0.00</div>
+                                <div class="performance-label">Gross profit / gross loss</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card performance-card mb-3">
+                            <div class="card-header bg-light">Total P&L</div>
+                            <div class="card-body text-center">
+                                <div class="performance-value neutral-value" id="total-pnl">0.00 USDT</div>
+                                <div class="performance-label">Cumulative profit/loss</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <div class="chart-container">
+                            <canvas id="equity-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-list-alt me-2"></i>Log</h5>
+            </div>
+            <div class="card-body">
+                <div class="log-container" id="log-container">
+                    <div class="text-center py-5">
+                        <p class="text-muted">No log entries yet</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/luxon@3.0.1/build/global/luxon.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.2.0/dist/chartjs-adapter-luxon.min.js"></script>
+<script>
+    $(document).ready(function() {
+        // Connect to Socket.IO
+        const socket = io();
+
+        // Chart instances
+        let priceChart = null;
+        let indicatorsChart = null;
+        let volumeChart = null;
+        let equityChart = null;
+
+        // Current timeframe
+        let currentTimeframe = '15m';
+
+        // Socket.IO event handlers
+        socket.on('connect', function() {
+            console.log('Connected to server');
+        });
+
+        socket.on('disconnect', function() {
+            console.log('Disconnected from server');
+        });
+
+        socket.on('log', function(data) {
+            addLogEntry(data.message, data.level, data.timestamp);
+        });
+
+        socket.on('status_update', function(data) {
+            updateStatus(data);
+        });
+
+        socket.on('trade', function(data) {
+            // Update signal display
+            updateSignal(data.side);
+            // Refresh performance metrics
+            fetchPerformanceData();
+        });
+
+        // Function to add log entry
+        function addLogEntry(message, level, timestamp) {
+            const logContainer = $('#log-container');
+
+            // Remove placeholder if present
+            if (logContainer.find('.text-center').length > 0) {
+                logContainer.empty();
+            }
+
+            // Create log entry
+            const logEntry = $('<div class="log-entry"></div>');
+            logEntry.append(`<span class="log-timestamp">[${timestamp}]</span> `);
+            logEntry.append(`<span class="log-${level}">${message}</span>`);
+
+            // Add to container
+            logContainer.append(logEntry);
+
+            // Scroll to bottom
+            logContainer.scrollTop(logContainer[0].scrollHeight);
+        }
+
+        // Function to update status
+        function updateStatus(data) {
+            if (data.running) {
+                $('#bot-status').html('<span class="badge bg-success">Running</span>');
+                $('#start-bot').prop('disabled', true);
+                $('#stop-bot').prop('disabled', false);
+                $('#close-positions').prop('disabled', false);
+            } else {
+                $('#bot-status').html('<span class="badge bg-danger">Stopped</span>');
+                $('#start-bot').prop('disabled', false);
+                $('#stop-bot').prop('disabled', true);
+                $('#close-positions').prop('disabled', true);
+            }
+
+            $('#trading-pair').text(data.symbol);
+            $('#timeframe').text(data.timeframe);
+            $('#trading-mode').text(data.dry_run ? 'Dry Run' : 'Live Trading');
+        }
+
+        // Function to update balance
+        function updateBalance(data) {
+            if (data.status === 'OK') {
+                const balance = data.balance;
+                $('#available-balance').text(`${balance.available_balance} USDT`);
+                $('#equity').text(`${balance.equity} USDT`);
+                $('#used-margin').text(`${balance.used_margin} USDT`);
+                $('#unrealized-pnl').text(`${balance.unrealized_pnl} USDT`);
+            } else {
+                $('#available-balance').text('Error');
+                $('#equity').text('Error');
+                $('#used-margin').text('Error');
+                $('#unrealized-pnl').text('Error');
+            }
+        }
+
+        // Function to update positions
+        function updatePositions(data) {
+            if (data.status === 'OK') {
+                const positions = data.positions;
+
+                if (positions.length === 0) {
+                    $('#positions-container').hide();
+                    $('#positions-table').hide();
+                    $('#no-positions').show();
+                } else {
+                    $('#positions-container').hide();
+                    $('#no-positions').hide();
+                    $('#positions-table').show();
+
+                    const tbody = $('#positions-body');
+                    tbody.empty();
+
+                    positions.forEach(function(position) {
+                        const tr = $('<tr></tr>');
+                        tr.append(`<td>${position.symbol}</td>`);
+                        tr.append(`<td>${position.side}</td>`);
+                        tr.append(`<td>${position.size}</td>`);
+                        tr.append(`<td>${position.entry_price}</td>`);
+                        tr.append(`<td>${position.mark_price}</td>`);
+
+                        const pnl = position.unrealized_pnl;
+                        const pnlClass = pnl >= 0 ? 'text-success' : 'text-danger';
+                        tr.append(`<td class="${pnlClass}">${pnl} USDT</td>`);
+
+                        tr.append(`
+                            <td>
+                                <button class="btn btn-sm btn-danger close-position-btn" data-symbol="${position.symbol}">
+                                    <i class="fas fa-times"></i> Close
+                                </button>
+                            </td>
+                        `);
+
+                        tbody.append(tr);
+                    });
+                }
+            } else {
+                $('#positions-container').hide();
+                $('#positions-table').hide();
+                $('#no-positions').show();
+                $('#no-positions').html(`
+                    <i class="fas fa-exclamation-circle fa-3x text-danger mb-3"></i>
+                    <p>Error loading positions: ${data.message}</p>
+                `);
+            }
+        }
+
+        // Function to update signal display
+        function updateSignal(signal) {
+            const signalElement = $('#signal');
+            const signalTimeElement = $('#signal-time');
+            const now = new Date();
+            const timeString = now.toLocaleTimeString();
+
+            let signalClass = 'signal-none';
+            let signalText = 'NONE';
+
+            if (signal === 'BUY' || signal === 'LONG') {
+                signalClass = 'signal-long';
+                signalText = 'LONG';
+            } else if (signal === 'SELL' || signal === 'SHORT') {
+                signalClass = 'signal-short';
+                signalText = 'SHORT';
+            }
+
+            signalElement.html(`<span class="signal-badge ${signalClass}">${signalText}</span>`);
+            signalTimeElement.text(`Last update: ${timeString}`);
+        }
+
+        // Function to fetch market data
+        function fetchMarketData() {
+            // Get symbol from trading pair, default to BTCUSDT if not loaded yet
+            let symbol = $('#trading-pair').text();
+            if (symbol === 'Loading...' || !symbol) {
+                symbol = 'BTCUSDT';
+            }
+
+            const timeframe = currentTimeframe;
+
+            $.get(`/api/market_data?symbol=${symbol}&interval=${timeframe}`, function(data) {
+                if (data.status === 'OK') {
+                    // Update ticker information
+                    updateTickerInfo(data.ticker);
+
+                    // Update charts
+                    updatePriceChart(data.market_data);
+                    updateIndicatorsChart(data.market_data);
+                    updateVolumeChart(data.market_data);
+                }
+            });
+        }
+
+        // Function to update ticker information
+        function updateTickerInfo(ticker) {
+            if (!ticker) return;
+
+            const lastPrice = parseFloat(ticker.lastPrice).toFixed(2);
+            const prevPrice = parseFloat(ticker.prevPrice24h).toFixed(2);
+            const highPrice = parseFloat(ticker.highPrice24h).toFixed(2);
+            const lowPrice = parseFloat(ticker.lowPrice24h).toFixed(2);
+            const priceChange = parseFloat(ticker.price24hPcnt) * 100;
+            const volume = parseFloat(ticker.volume24h);
+            const turnover = parseFloat(ticker.turnover24h);
+
+            // Update price
+            $('#current-price').text(`$${lastPrice}`);
+            $('#price-updated').text(`Updated: ${new Date().toLocaleTimeString()}`);
+
+            // Update price change
+            const priceChangeElement = $('#price-change');
+            priceChangeElement.text(`${priceChange.toFixed(2)}%`);
+
+            if (priceChange > 0) {
+                priceChangeElement.removeClass('text-danger').addClass('text-success');
+            } else if (priceChange < 0) {
+                priceChangeElement.removeClass('text-success').addClass('text-danger');
+            } else {
+                priceChangeElement.removeClass('text-success text-danger');
+            }
+
+            // Update high/low
+            $('#high-price').text(`$${highPrice}`);
+            $('#low-price').text(`$${lowPrice}`);
+
+            // Update volume
+            $('#volume').text(volume.toFixed(2));
+            $('#volume-usd').text(`$${turnover.toFixed(2)}`);
+        }
+
+        // Function to update price chart
+        function updatePriceChart(marketData) {
+            if (!marketData || marketData.length === 0) return;
+
+            const timestamps = marketData.map(item => item.timestamp);
+            const opens = marketData.map(item => item.open);
+            const highs = marketData.map(item => item.high);
+            const lows = marketData.map(item => item.low);
+            const closes = marketData.map(item => item.close);
+
+            if (priceChart) {
+                priceChart.destroy();
+            }
+
+            const ctx = document.getElementById('price-chart').getContext('2d');
+            priceChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: timestamps,
+                    datasets: [
+                        {
+                            label: 'Price',
+                            data: closes,
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                            borderWidth: 2,
+                            fill: false,
+                            tension: 0.1
+                        },
+                        {
+                            label: 'High',
+                            data: highs,
+                            borderColor: 'rgba(54, 162, 235, 0.5)',
+                            borderWidth: 1,
+                            pointRadius: 0,
+                            fill: false,
+                            hidden: true
+                        },
+                        {
+                            label: 'Low',
+                            data: lows,
+                            borderColor: 'rgba(255, 99, 132, 0.5)',
+                            borderWidth: 1,
+                            pointRadius: 0,
+                            fill: false,
+                            hidden: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'hour',
+                                displayFormats: {
+                                    hour: 'MMM d, HH:mm'
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Time'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Price'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Function to fetch performance data
+        function fetchPerformanceData() {
+            $.get('/api/trade_history', function(data) {
+                if (data.status === 'OK') {
+                    updatePerformanceMetrics(data.performance);
+                    updateEquityChart(data.performance.equity_curve);
+                }
+            });
+        }
+
+        // Function to update performance metrics
+        function updatePerformanceMetrics(performance) {
+            if (!performance) return;
+
+            const totalTrades = performance.total_trades;
+            const winRate = performance.win_rate;
+            const profitFactor = performance.profit_factor;
+            const totalPnl = performance.total_pnl;
+
+            // Update metrics
+            $('#total-trades').text(totalTrades);
+            $('#win-rate').text(`${winRate.toFixed(2)}%`);
+            $('#profit-factor').text(profitFactor.toFixed(2));
+            $('#total-pnl').text(`${totalPnl.toFixed(2)} USDT`);
+
+            // Update colors
+            if (winRate > 50) {
+                $('#win-rate').removeClass('neutral-value negative-value').addClass('positive-value');
+            } else if (winRate < 50) {
+                $('#win-rate').removeClass('neutral-value positive-value').addClass('negative-value');
+            } else {
+                $('#win-rate').removeClass('positive-value negative-value').addClass('neutral-value');
+            }
+
+            if (profitFactor > 1) {
+                $('#profit-factor').removeClass('neutral-value negative-value').addClass('positive-value');
+            } else if (profitFactor < 1) {
+                $('#profit-factor').removeClass('neutral-value positive-value').addClass('negative-value');
+            } else {
+                $('#profit-factor').removeClass('positive-value negative-value').addClass('neutral-value');
+            }
+
+            if (totalPnl > 0) {
+                $('#total-pnl').removeClass('neutral-value negative-value').addClass('positive-value');
+            } else if (totalPnl < 0) {
+                $('#total-pnl').removeClass('neutral-value positive-value').addClass('negative-value');
+            } else {
+                $('#total-pnl').removeClass('positive-value negative-value').addClass('neutral-value');
+            }
+        }
+
+        // Function to update equity chart
+        function updateEquityChart(equityCurve) {
+            if (!equityCurve || equityCurve.length === 0) return;
+
+            if (equityChart) {
+                equityChart.destroy();
+            }
+
+            const ctx = document.getElementById('equity-chart').getContext('2d');
+            equityChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: equityCurve.map(item => item.date),
+                    datasets: [{
+                        label: 'Equity Curve',
+                        data: equityCurve.map(item => item.equity),
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 2,
+                        tension: 0.1,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Date'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Equity (USDT)'
+                            },
+                            beginAtZero: false
+                        }
+                    }
+                }
+            });
+        }
+
+        // Fetch initial data
+        function fetchData() {
+            // Fetch bot status
+            $.get('/api/status', function(data) {
+                updateStatus(data);
+            });
+
+            // Fetch balance
+            $.get('/api/balance', function(data) {
+                updateBalance(data);
+            });
+
+            // Fetch positions
+            $.get('/api/positions', function(data) {
+                updatePositions(data);
+            });
+
+            // Fetch market data
+            fetchMarketData();
+
+            // Fetch performance data
+            fetchPerformanceData();
+        }
+
+        // Fetch data every 5 seconds
+        fetchData();
+        setInterval(fetchData, 5000);
+
+        // Button event handlers
+        $('#start-bot').click(function() {
+            $.post('/api/start', function(data) {
+                if (data.status === 'OK') {
+                    addLogEntry('Bot started', 'info', new Date().toISOString().replace('T', ' ').substring(0, 19));
+                } else {
+                    addLogEntry(`Failed to start bot: ${data.message}`, 'error', new Date().toISOString().replace('T', ' ').substring(0, 19));
+                }
+            });
+        });
+
+        $('#stop-bot').click(function() {
+            $.post('/api/stop', function(data) {
+                if (data.status === 'OK') {
+                    addLogEntry('Bot stopped', 'info', new Date().toISOString().replace('T', ' ').substring(0, 19));
+                } else {
+                    addLogEntry(`Failed to stop bot: ${data.message}`, 'error', new Date().toISOString().replace('T', ' ').substring(0, 19));
+                }
+            });
+        });
+
+        $('#close-positions').click(function() {
+            $.post('/api/close_position', function(data) {
+                if (data.status === 'OK') {
+                    addLogEntry('Position closed', 'info', new Date().toISOString().replace('T', ' ').substring(0, 19));
+                } else {
+                    addLogEntry(`Failed to close position: ${data.message}`, 'error', new Date().toISOString().replace('T', ' ').substring(0, 19));
+                }
+            });
+        });
+
+        // Close position button event handler (delegated)
+        $(document).on('click', '.close-position-btn', function() {
+            const symbol = $(this).data('symbol');
+            $.post('/api/close_position', { symbol: symbol }, function(data) {
+                if (data.status === 'OK') {
+                    addLogEntry(`Position closed for ${symbol}`, 'info', new Date().toISOString().replace('T', ' ').substring(0, 19));
+                } else {
+                    addLogEntry(`Failed to close position for ${symbol}: ${data.message}`, 'error', new Date().toISOString().replace('T', ' ').substring(0, 19));
+                }
+            });
+        });
+
+        // Timeframe button handlers
+        $('#timeframe-1m, #timeframe-5m, #timeframe-15m, #timeframe-1h, #timeframe-4h, #timeframe-1d').click(function() {
+            // Update active button
+            $('.btn-group .btn').removeClass('active');
+            $(this).addClass('active');
+
+            // Get timeframe from button id
+            currentTimeframe = $(this).attr('id').replace('timeframe-', '');
+
+            // Fetch market data with new timeframe
+            fetchMarketData();
+        });
+
+        // Refresh chart button handler
+        $('#refresh-chart').click(function() {
+            fetchMarketData();
+        });
+
+        // Refresh performance button handler
+        $('#refresh-performance').click(function() {
+            fetchPerformanceData();
+        });
+
+        // Export trades button handler
+        $('#export-trades').click(function() {
+            $.post('/api/export_data', { type: 'trades' }, function(data) {
+                if (data.status === 'OK') {
+                    // Create a download link
+                    const blob = new Blob([JSON.stringify(data.data, null, 2)], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = data.filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+
+                    addLogEntry(`Exported trade history to ${data.filename}`, 'info', new Date().toISOString().replace('T', ' ').substring(0, 19));
+                } else {
+                    addLogEntry(`Failed to export trade history: ${data.message}`, 'error', new Date().toISOString().replace('T', ' ').substring(0, 19));
+                }
+            });
+        });
+
+        // Function to update indicators chart
+        function updateIndicatorsChart(marketData) {
+            if (!marketData || marketData.length === 0) return;
+
+            // For simplicity, we'll just show a placeholder chart
+            // In a real implementation, you would calculate indicators from market data
+            if (indicatorsChart) {
+                indicatorsChart.destroy();
+            }
+
+            const ctx = document.getElementById('indicators-chart').getContext('2d');
+            indicatorsChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: marketData.map(item => item.timestamp),
+                    datasets: [
+                        {
+                            label: 'EMA 9',
+                            data: marketData.map(item => item.close * 0.98), // Placeholder
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            borderWidth: 2,
+                            fill: false
+                        },
+                        {
+                            label: 'EMA 21',
+                            data: marketData.map(item => item.close * 0.95), // Placeholder
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 2,
+                            fill: false
+                        },
+                        {
+                            label: 'RSI',
+                            data: marketData.map(() => Math.random() * 40 + 30), // Placeholder
+                            borderColor: 'rgba(255, 206, 86, 1)',
+                            borderWidth: 2,
+                            fill: false,
+                            yAxisID: 'rsi'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'hour',
+                                displayFormats: {
+                                    hour: 'MMM d, HH:mm'
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Time'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Price'
+                            }
+                        },
+                        rsi: {
+                            position: 'right',
+                            min: 0,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: 'RSI'
+                            },
+                            grid: {
+                                drawOnChartArea: false
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Function to update volume chart
+        function updateVolumeChart(marketData) {
+            if (!marketData || marketData.length === 0) return;
+
+            if (volumeChart) {
+                volumeChart.destroy();
+            }
+
+            const ctx = document.getElementById('volume-chart').getContext('2d');
+            volumeChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: marketData.map(item => item.timestamp),
+                    datasets: [{
+                        label: 'Volume',
+                        data: marketData.map(item => item.volume),
+                        backgroundColor: marketData.map(item =>
+                            item.close > item.open ? 'rgba(75, 192, 192, 0.5)' : 'rgba(255, 99, 132, 0.5)'
+                        ),
+                        borderColor: marketData.map(item =>
+                            item.close > item.open ? 'rgba(75, 192, 192, 1)' : 'rgba(255, 99, 132, 1)'
+                        ),
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'hour',
+                                displayFormats: {
+                                    hour: 'MMM d, HH:mm'
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Time'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Volume'
+                            },
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

@@ -43,11 +43,50 @@ class PatternRecognition:
         """
         if df is None or df.empty:
             if self.logger:
-                self.logger.error("Cannot detect patterns: No data provided")
-            return None
+                self.logger.debug("No data provided for pattern detection, initializing empty dataframe with pattern columns")
+
+            # Create an empty DataFrame with the required columns if df is None
+            if df is None:
+                df = pd.DataFrame(columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
+
+            # Initialize pattern columns even for empty DataFrame
+            pattern_columns = [
+                'doji', 'hammer', 'inverted_hammer', 'shooting_star',
+                'bullish_marubozu', 'bearish_marubozu', 'bullish_engulfing',
+                'bearish_engulfing', 'bullish_harami', 'bearish_harami',
+                'tweezer_top', 'tweezer_bottom', 'morning_star', 'evening_star',
+                'three_white_soldiers', 'three_black_crows', 'head_and_shoulders',
+                'inverse_head_and_shoulders', 'double_top', 'double_bottom'
+            ]
+
+            for column in pattern_columns:
+                df[column] = False
+
+            # Initialize pattern strength columns
+            df['bullish_pattern_strength'] = 0
+            df['bearish_pattern_strength'] = 0
+
+            return df  # Return the initialized dataframe
 
         # Make a copy to avoid modifying the original
         df = df.copy()
+
+        # Initialize all pattern columns to False to ensure they exist
+        pattern_columns = [
+            'doji', 'hammer', 'inverted_hammer', 'shooting_star',
+            'bullish_marubozu', 'bearish_marubozu', 'bullish_engulfing',
+            'bearish_engulfing', 'bullish_harami', 'bearish_harami',
+            'tweezer_top', 'tweezer_bottom', 'morning_star', 'evening_star',
+            'three_white_soldiers', 'three_black_crows', 'head_and_shoulders',
+            'inverse_head_and_shoulders', 'double_top', 'double_bottom'
+        ]
+
+        for column in pattern_columns:
+            df[column] = False
+
+        # Initialize pattern strength columns
+        df['bullish_pattern_strength'] = 0
+        df['bearish_pattern_strength'] = 0
 
         try:
             # Detect single candlestick patterns
@@ -238,7 +277,7 @@ class PatternRecognition:
                 curr_open <= prev_close and  # Current open is below or equal to previous close
                 curr_close >= prev_open and  # Current close is above or equal to previous open
                 curr_body_size > prev_body_size):  # Current body is larger than previous body
-                df['bullish_engulfing'].iloc[i] = True
+                df.loc[df.index[i], 'bullish_engulfing'] = True
 
             # Bearish Engulfing: current candle is bearish and engulfs previous bullish candle
             elif (curr_close < curr_open and  # Current candle is bearish
@@ -246,7 +285,7 @@ class PatternRecognition:
                   curr_open >= prev_close and  # Current open is above or equal to previous close
                   curr_close <= prev_open and  # Current close is below or equal to previous open
                   curr_body_size > prev_body_size):  # Current body is larger than previous body
-                df['bearish_engulfing'].iloc[i] = True
+                df.loc[df.index[i], 'bearish_engulfing'] = True
 
         return df
 
@@ -287,7 +326,7 @@ class PatternRecognition:
                 curr_open > prev_close and  # Current open is above previous close
                 curr_close < prev_open and  # Current close is below previous open
                 curr_body_size < prev_body_size * 0.6):  # Current body is smaller than previous body
-                df['bullish_harami'].iloc[i] = True
+                df.loc[df.index[i], 'bullish_harami'] = True
 
             # Bearish Harami: small bearish candle inside previous large bullish candle
             elif (curr_close < curr_open and  # Current candle is bearish
@@ -295,7 +334,7 @@ class PatternRecognition:
                   curr_open < prev_close and  # Current open is below previous close
                   curr_close > prev_open and  # Current close is above previous open
                   curr_body_size < prev_body_size * 0.6):  # Current body is smaller than previous body
-                df['bearish_harami'].iloc[i] = True
+                df.loc[df.index[i], 'bearish_harami'] = True
 
         return df
 
@@ -324,13 +363,13 @@ class PatternRecognition:
             if (abs(df['high'].iloc[i] - df['high'].iloc[i-1]) / df['high'].iloc[i] < 0.001 and  # Same high (within 0.1%)
                 df['close'].iloc[i-1] > df['open'].iloc[i-1] and  # First candle is bullish
                 df['close'].iloc[i] < df['open'].iloc[i]):  # Second candle is bearish
-                df['tweezer_top'].iloc[i] = True
+                df.loc[df.index[i], 'tweezer_top'] = True
 
             # Check for Tweezer Bottom: two candles with same low, first bearish, second bullish
             if (abs(df['low'].iloc[i] - df['low'].iloc[i-1]) / df['low'].iloc[i] < 0.001 and  # Same low (within 0.1%)
                 df['close'].iloc[i-1] < df['open'].iloc[i-1] and  # First candle is bearish
                 df['close'].iloc[i] > df['open'].iloc[i]):  # Second candle is bullish
-                df['tweezer_bottom'].iloc[i] = True
+                df.loc[df.index[i], 'tweezer_bottom'] = True
 
         return df
 
@@ -378,7 +417,7 @@ class PatternRecognition:
                 third_close > third_open and  # Third candle is bullish
                 third_body_size > second_body_size * 2 and  # Third candle has a large body
                 third_close > (first_open + first_close) / 2):  # Third candle closes above midpoint of first candle
-                df['morning_star'].iloc[i] = True
+                df.loc[df.index[i], 'morning_star'] = True
 
         return df
 
@@ -426,7 +465,7 @@ class PatternRecognition:
                 third_close < third_open and  # Third candle is bearish
                 third_body_size > second_body_size * 2 and  # Third candle has a large body
                 third_close < (first_open + first_close) / 2):  # Third candle closes below midpoint of first candle
-                df['evening_star'].iloc[i] = True
+                df.loc[df.index[i], 'evening_star'] = True
 
         return df
 
@@ -456,7 +495,7 @@ class PatternRecognition:
                 df['close'].iloc[i] > df['open'].iloc[i] and  # Third candle is bullish
                 df['close'].iloc[i] > df['close'].iloc[i-1] > df['close'].iloc[i-2] and  # Each closes higher than previous
                 df['open'].iloc[i] > df['open'].iloc[i-1] > df['open'].iloc[i-2]):  # Each opens higher than previous
-                df['three_white_soldiers'].iloc[i] = True
+                df.loc[df.index[i], 'three_white_soldiers'] = True
 
         return df
 
@@ -486,7 +525,7 @@ class PatternRecognition:
                 df['close'].iloc[i] < df['open'].iloc[i] and  # Third candle is bearish
                 df['close'].iloc[i] < df['close'].iloc[i-1] < df['close'].iloc[i-2] and  # Each closes lower than previous
                 df['open'].iloc[i] < df['open'].iloc[i-1] < df['open'].iloc[i-2]):  # Each opens lower than previous
-                df['three_black_crows'].iloc[i] = True
+                df.loc[df.index[i], 'three_black_crows'] = True
 
         return df
 
@@ -565,7 +604,7 @@ class PatternRecognition:
                             trough_diff = abs(left_trough - right_trough) / left_trough
                             if trough_diff <= 0.05:  # Troughs within 5% of each other
                                 # Pattern confirmed at the last candle in the window
-                                df['head_and_shoulders'].iloc[i] = True
+                                df.loc[df.index[i], 'head_and_shoulders'] = True
 
         return df
 
@@ -643,7 +682,7 @@ class PatternRecognition:
                             peak_diff = abs(left_peak - right_peak) / left_peak
                             if peak_diff <= 0.05:  # Peaks within 5% of each other
                                 # Pattern confirmed at the last candle in the window
-                                df['inverse_head_and_shoulders'].iloc[i] = True
+                                df.loc[df.index[i], 'inverse_head_and_shoulders'] = True
 
         return df
 
@@ -711,7 +750,7 @@ class PatternRecognition:
                             # Check if the price has started to decline after the second peak
                             if peak2_idx < len(window) - 1 and window['close'].iloc[-1] < window['close'].iloc[peak2_idx]:
                                 # Pattern confirmed at the last candle in the window
-                                df['double_top'].iloc[i] = True
+                                df.loc[df.index[i], 'double_top'] = True
 
         return df
 
@@ -779,7 +818,7 @@ class PatternRecognition:
                             # Check if the price has started to rise after the second trough
                             if trough2_idx < len(window) - 1 and window['close'].iloc[-1] > window['close'].iloc[trough2_idx]:
                                 # Pattern confirmed at the last candle in the window
-                                df['double_bottom'].iloc[i] = True
+                                df.loc[df.index[i], 'double_bottom'] = True
 
         return df
 
@@ -793,52 +832,73 @@ class PatternRecognition:
         Returns:
             pandas.DataFrame: DataFrame with pattern_strength columns added.
         """
-        # Initialize strength columns
-        df['bullish_pattern_strength'] = 0
-        df['bearish_pattern_strength'] = 0
+        try:
+            # Initialize strength columns (in case they weren't initialized earlier)
+            df['bullish_pattern_strength'] = 0
+            df['bearish_pattern_strength'] = 0
 
-        # Define pattern weights
-        pattern_weights = {
-            # Bullish patterns
-            'hammer': 1,
-            'bullish_engulfing': 2,
-            'bullish_harami': 1,
-            'tweezer_bottom': 1,
-            'morning_star': 3,
-            'three_white_soldiers': 3,
-            'bullish_marubozu': 2,
-            'inverse_head_and_shoulders': 4,  # Complex pattern, higher weight
-            'double_bottom': 4,  # Complex pattern, higher weight
+            # Define pattern weights
+            pattern_weights = {
+                # Bullish patterns
+                'hammer': 1,
+                'bullish_engulfing': 2,
+                'bullish_harami': 1,
+                'tweezer_bottom': 1,
+                'morning_star': 3,
+                'three_white_soldiers': 3,
+                'bullish_marubozu': 2,
+                'inverse_head_and_shoulders': 4,  # Complex pattern, higher weight
+                'double_bottom': 4,  # Complex pattern, higher weight
 
-            # Bearish patterns
-            'shooting_star': 1,
-            'inverted_hammer': 1,
-            'bearish_engulfing': 2,
-            'bearish_harami': 1,
-            'tweezer_top': 1,
-            'evening_star': 3,
-            'three_black_crows': 3,
-            'bearish_marubozu': 2,
-            'head_and_shoulders': 4,  # Complex pattern, higher weight
-            'double_top': 4  # Complex pattern, higher weight
-        }
+                # Bearish patterns
+                'shooting_star': 1,
+                'inverted_hammer': 1,
+                'bearish_engulfing': 2,
+                'bearish_harami': 1,
+                'tweezer_top': 1,
+                'evening_star': 3,
+                'three_black_crows': 3,
+                'bearish_marubozu': 2,
+                'head_and_shoulders': 4,  # Complex pattern, higher weight
+                'double_top': 4  # Complex pattern, higher weight
+            }
 
-        # Calculate bullish pattern strength
-        bullish_patterns = ['hammer', 'bullish_engulfing', 'bullish_harami',
-                           'tweezer_bottom', 'morning_star', 'three_white_soldiers',
-                           'bullish_marubozu', 'inverse_head_and_shoulders', 'double_bottom']
+            # Calculate bullish pattern strength
+            bullish_patterns = ['hammer', 'bullish_engulfing', 'bullish_harami',
+                            'tweezer_bottom', 'morning_star', 'three_white_soldiers',
+                            'bullish_marubozu', 'inverse_head_and_shoulders', 'double_bottom']
 
-        for pattern in bullish_patterns:
-            if pattern in df.columns:
-                df['bullish_pattern_strength'] += df[pattern].astype(int) * pattern_weights[pattern]
+            for pattern in bullish_patterns:
+                if pattern in df.columns:
+                    try:
+                        df['bullish_pattern_strength'] += df[pattern].astype(int) * pattern_weights[pattern]
+                    except Exception as e:
+                        if self.logger:
+                            self.logger.warning(f"Error calculating bullish pattern strength for {pattern}: {e}")
 
-        # Calculate bearish pattern strength
-        bearish_patterns = ['shooting_star', 'inverted_hammer', 'bearish_engulfing',
-                           'bearish_harami', 'tweezer_top', 'evening_star',
-                           'three_black_crows', 'bearish_marubozu', 'head_and_shoulders', 'double_top']
+            # Calculate bearish pattern strength
+            bearish_patterns = ['shooting_star', 'inverted_hammer', 'bearish_engulfing',
+                            'bearish_harami', 'tweezer_top', 'evening_star',
+                            'three_black_crows', 'bearish_marubozu', 'head_and_shoulders', 'double_top']
 
-        for pattern in bearish_patterns:
-            if pattern in df.columns:
-                df['bearish_pattern_strength'] += df[pattern].astype(int) * pattern_weights[pattern]
+            for pattern in bearish_patterns:
+                if pattern in df.columns:
+                    try:
+                        df['bearish_pattern_strength'] += df[pattern].astype(int) * pattern_weights[pattern]
+                    except Exception as e:
+                        if self.logger:
+                            self.logger.warning(f"Error calculating bearish pattern strength for {pattern}: {e}")
+
+            if self.logger:
+                self.logger.debug(f"Pattern strength calculated successfully")
+
+        except Exception as e:
+            if self.logger:
+                self.logger.error(f"Failed to calculate pattern strength: {e}")
+                import traceback
+                self.logger.error(f"Detailed error: {traceback.format_exc()}")
+            # Ensure pattern strength columns exist even if calculation fails
+            df['bullish_pattern_strength'] = 0
+            df['bearish_pattern_strength'] = 0
 
         return df

@@ -8,6 +8,14 @@ import os
 from datetime import datetime
 import config
 
+# Import web interface functions if available
+try:
+    from web_interface import emit_log
+except ImportError:
+    # Define a dummy function if web_interface is not available
+    def emit_log(message, level="info"):
+        pass
+
 class Logger:
     """
     Logger class for the Bybit Trading Bot.
@@ -16,53 +24,54 @@ class Logger:
     def __init__(self, log_file=None, log_level=None):
         """
         Initialize the logger.
-        
+
         Args:
             log_file (str, optional): Path to the log file. Defaults to config.LOG_FILE.
             log_level (str, optional): Log level. Defaults to config.LOG_LEVEL.
         """
         self.log_file = log_file or config.LOG_FILE
         self.log_level = log_level or config.LOG_LEVEL
-        
+
         # Create logs directory if it doesn't exist
         os.makedirs(os.path.dirname(self.log_file), exist_ok=True)
-        
+
         # Set up logging
         self.logger = logging.getLogger("TradingBot")
         self.logger.setLevel(self._get_log_level(self.log_level))
-        
+
         # Clear existing handlers
         self.logger.handlers = []
-        
-        # Create file handler
-        file_handler = logging.FileHandler(self.log_file)
+
+        # Create file handler with UTF-8 encoding
+        file_handler = logging.FileHandler(self.log_file, encoding='utf-8')
         file_handler.setLevel(self._get_log_level(self.log_level))
-        
-        # Create console handler
-        console_handler = logging.StreamHandler()
+
+        # Create console handler with UTF-8 encoding
+        import sys
+        console_handler = logging.StreamHandler(sys.stdout)
         console_handler.setLevel(self._get_log_level(self.log_level))
-        
+
         # Create formatter
-        formatter = logging.Formatter('[%(asctime)s] [%(levelname)s] %(message)s', 
+        formatter = logging.Formatter('[%(asctime)s] [%(levelname)s] %(message)s',
                                      datefmt='%Y-%m-%d %H:%M:%S')
-        
+
         # Add formatter to handlers
         file_handler.setFormatter(formatter)
         console_handler.setFormatter(formatter)
-        
+
         # Add handlers to logger
         self.logger.addHandler(file_handler)
         self.logger.addHandler(console_handler)
-        
+
         self.info(f"Logger initialized with level: {self.log_level}")
-    
+
     def _get_log_level(self, level_str):
         """
         Convert string log level to logging level.
-        
+
         Args:
             level_str (str): Log level as string.
-            
+
         Returns:
             int: Logging level.
         """
@@ -74,31 +83,36 @@ class Logger:
             "CRITICAL": logging.CRITICAL
         }
         return levels.get(level_str.upper(), logging.INFO)
-    
+
     def debug(self, message):
         """Log debug message."""
         self.logger.debug(message)
-    
+        emit_log(message, "debug")
+
     def info(self, message):
         """Log info message."""
         self.logger.info(message)
-    
+        emit_log(message, "info")
+
     def warning(self, message):
         """Log warning message."""
         self.logger.warning(message)
-    
+        emit_log(message, "warning")
+
     def error(self, message):
         """Log error message."""
         self.logger.error(message)
-    
+        emit_log(message, "error")
+
     def critical(self, message):
         """Log critical message."""
         self.logger.critical(message)
-    
+        emit_log(message, "error")
+
     def trade(self, action, symbol, side, quantity, price, sl=None, tp=None):
         """
         Log trade information.
-        
+
         Args:
             action (str): Trade action (ENTRY, EXIT).
             symbol (str): Trading symbol.
@@ -114,11 +128,11 @@ class Logger:
         if tp:
             message += f", TP: {tp}"
         self.info(message)
-    
+
     def signal(self, symbol, timeframe, signal_type, indicators=None):
         """
         Log signal information.
-        
+
         Args:
             symbol (str): Trading symbol.
             timeframe (str): Timeframe.
@@ -129,11 +143,11 @@ class Logger:
         if indicators:
             message += f", Indicators: {indicators}"
         self.info(message)
-    
+
     def balance(self, available_balance, wallet_balance, unrealized_pnl=None):
         """
         Log balance information.
-        
+
         Args:
             available_balance (float): Available balance.
             wallet_balance (float): Wallet balance.
@@ -143,11 +157,11 @@ class Logger:
         if unrealized_pnl is not None:
             message += f", Unrealized PnL: {unrealized_pnl}"
         self.info(message)
-    
+
     def position(self, symbol, side, size, entry_price, liq_price=None, unrealized_pnl=None):
         """
         Log position information.
-        
+
         Args:
             symbol (str): Trading symbol.
             side (str): Position side (BUY, SELL).
