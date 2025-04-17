@@ -1,7 +1,5 @@
 <div align="center">
 
-<img src="https://i.imgur.com/8hDYmQB.png" alt="Bybit Trading Bot Logo" width="180">
-
 # 🤖 Bybit Trading Bot 📈
 
 [![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
@@ -11,7 +9,7 @@
 
 *A professional Python-based trading bot for Bybit futures trading with a focus on long-term stable trading and minimizing drawdowns.*
 
-[Features](#-features) • [Requirements](#-requirements) • [Installation](#-installation) • [Usage](#-usage) • [Strategy](#-trading-strategy) • [Risk Management](#-risk-management)
+[Features](#-features) • [Requirements](#-requirements) • [Installation](#-installation) • [Usage](#-usage) • [Strategy](#-trading-strategy) • [Risk Management](#-risk-management) • [Logging & Notifications](#-logging--notifications) • [Project Structure](#-project-structure) • [Future Improvements](#-future-improvements) • [Disclaimer](#-disclaimer) • [License](#-license)
 
 <hr>
 
@@ -213,6 +211,10 @@ python main.py
 5. **Pattern confirmation**: Bearish candlestick pattern(s) with strength >= threshold
 6. No active long position
 
+### Exit Signal 🚪
+1. Stop-Loss or Take-Profit is hit
+2. Opposite signal appears
+
 ### Candlestick Patterns
 
 #### Bullish Patterns
@@ -233,10 +235,6 @@ python main.py
 - **Evening Star**: Three-candle pattern with a large bullish candle, a small-bodied candle, and a large bearish candle
 - **Three Black Crows**: Three consecutive bearish candles, each closing lower than the previous
 - **Bearish Marubozu**: A bearish candle with no or very small shadows
-
-### Exit Signal 🚪
-1. Stop-Loss or Take-Profit is hit
-2. Opposite signal appears
 
 <div align="center">
 <img src="https://i.imgur.com/waxVImv.png" alt="Colorful Divider" width="600">
