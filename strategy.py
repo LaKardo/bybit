@@ -45,8 +45,19 @@ class Strategy:
         self.pattern_strength_threshold = config.PATTERN_STRENGTH_THRESHOLD
         self.pattern_confirmation_required = config.PATTERN_CONFIRMATION_REQUIRED
 
+        # Complex pattern parameters
+        self.complex_patterns_enabled = config.COMPLEX_PATTERNS_ENABLED
+        self.complex_pattern_min_candles = config.COMPLEX_PATTERN_MIN_CANDLES
+        self.hs_pattern_shoulder_diff_threshold = config.HS_PATTERN_SHOULDER_DIFF_THRESHOLD
+        self.double_pattern_level_threshold = config.DOUBLE_PATTERN_LEVEL_THRESHOLD
+
         # Initialize pattern recognition module
-        self.pattern_recognition = PatternRecognition(logger=self.logger)
+        self.pattern_recognition = PatternRecognition(
+            logger=self.logger,
+            complex_patterns_enabled=self.complex_patterns_enabled,
+            hs_shoulder_diff_threshold=self.hs_pattern_shoulder_diff_threshold,
+            double_pattern_level_threshold=self.double_pattern_level_threshold
+        )
 
         if self.logger:
             self.logger.info("Strategy initialized")
@@ -255,12 +266,26 @@ class Strategy:
                         if pattern in current and current[pattern]:
                             bullish_patterns.append(pattern.replace('_', ' ').title())
 
+                    # Check for complex bullish patterns if enabled
+                    if self.complex_patterns_enabled:
+                        complex_bullish_patterns = ['inverse_head_and_shoulders', 'double_bottom']
+                        for pattern in complex_bullish_patterns:
+                            if pattern in current and current[pattern]:
+                                bullish_patterns.append(pattern.replace('_', ' ').title())
+
                     # Check for bearish patterns
                     pattern_columns = ['shooting_star', 'inverted_hammer', 'bearish_engulfing', 'bearish_harami',
                                       'tweezer_top', 'evening_star', 'three_black_crows', 'bearish_marubozu']
                     for pattern in pattern_columns:
                         if pattern in current and current[pattern]:
                             bearish_patterns.append(pattern.replace('_', ' ').title())
+
+                    # Check for complex bearish patterns if enabled
+                    if self.complex_patterns_enabled:
+                        complex_bearish_patterns = ['head_and_shoulders', 'double_top']
+                        for pattern in complex_bearish_patterns:
+                            if pattern in current and current[pattern]:
+                                bearish_patterns.append(pattern.replace('_', ' ').title())
 
                     if bullish_patterns:
                         indicators["Bullish Patterns"] = ", ".join(bullish_patterns)

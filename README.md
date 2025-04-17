@@ -146,6 +146,12 @@ VOLUME_REQUIRED = True  # Whether to require volume confirmation for signals
 PATTERN_RECOGNITION_ENABLED = True  # Whether to use candlestick pattern recognition
 PATTERN_STRENGTH_THRESHOLD = 2  # Minimum pattern strength to generate a signal
 PATTERN_CONFIRMATION_REQUIRED = True  # Whether to require pattern confirmation for signals
+
+# Complex Pattern Parameters
+COMPLEX_PATTERNS_ENABLED = True  # Whether to use complex chart patterns (H&S, Double Top/Bottom)
+COMPLEX_PATTERN_MIN_CANDLES = 14  # Minimum number of candles to analyze for complex patterns
+HS_PATTERN_SHOULDER_DIFF_THRESHOLD = 0.1  # Maximum allowed difference between shoulders (10%)
+DOUBLE_PATTERN_LEVEL_THRESHOLD = 0.03  # Maximum allowed difference between tops/bottoms (3%)
 ```
 
 ### Risk Management
@@ -215,9 +221,11 @@ python main.py
 1. Stop-Loss or Take-Profit is hit
 2. Opposite signal appears
 
-### Candlestick Patterns
+### Chart Patterns
 
-#### Bullish Patterns
+#### Simple Candlestick Patterns
+
+##### Bullish Patterns
 - **Hammer**: Small body at the top with a long lower shadow
 - **Bullish Engulfing**: A bullish candle that completely engulfs the previous bearish candle
 - **Bullish Harami**: A small bullish candle contained within the body of the previous larger bearish candle
@@ -226,7 +234,7 @@ python main.py
 - **Three White Soldiers**: Three consecutive bullish candles, each closing higher than the previous
 - **Bullish Marubozu**: A bullish candle with no or very small shadows
 
-#### Bearish Patterns
+##### Bearish Patterns
 - **Shooting Star**: Small body at the bottom with a long upper shadow
 - **Inverted Hammer**: Small body at the bottom with a long upper shadow (appears in a downtrend)
 - **Bearish Engulfing**: A bearish candle that completely engulfs the previous bullish candle
@@ -235,6 +243,16 @@ python main.py
 - **Evening Star**: Three-candle pattern with a large bullish candle, a small-bodied candle, and a large bearish candle
 - **Three Black Crows**: Three consecutive bearish candles, each closing lower than the previous
 - **Bearish Marubozu**: A bearish candle with no or very small shadows
+
+#### Complex Chart Patterns
+
+##### Bullish Patterns
+- **Inverse Head and Shoulders**: A bullish reversal pattern consisting of three troughs, with the middle trough (head) being lower than the two surrounding troughs (shoulders)
+- **Double Bottom**: A bullish reversal pattern consisting of two troughs at approximately the same price level, with a moderate peak in between
+
+##### Bearish Patterns
+- **Head and Shoulders**: A bearish reversal pattern consisting of three peaks, with the middle peak (head) being higher than the two surrounding peaks (shoulders)
+- **Double Top**: A bearish reversal pattern consisting of two peaks at approximately the same price level, with a moderate trough in between
 
 <div align="center">
 <img src="https://i.imgur.com/waxVImv.png" alt="Colorful Divider" width="600">
@@ -311,7 +329,6 @@ python main.py
 
 ### Advanced Strategy Enhancements
 - **Multi-Timeframe Analysis**: Implement signal confirmation across multiple timeframes
-- **Advanced Pattern Recognition**: Implement more complex chart patterns (Head & Shoulders, Double Top/Bottom, etc.)
 - **Machine Learning Integration**: Add predictive models for enhanced signal generation
 
 ### Risk Management Improvements

@@ -35,6 +35,12 @@ PATTERN_RECOGNITION_ENABLED = True  # Whether to use candlestick pattern recogni
 PATTERN_STRENGTH_THRESHOLD = 2  # Minimum pattern strength to generate a signal
 PATTERN_CONFIRMATION_REQUIRED = True  # Whether to require pattern confirmation for signals
 
+# Complex Pattern Parameters
+COMPLEX_PATTERNS_ENABLED = True  # Whether to use complex chart patterns (H&S, Double Top/Bottom)
+COMPLEX_PATTERN_MIN_CANDLES = 14  # Minimum number of candles to analyze for complex patterns
+HS_PATTERN_SHOULDER_DIFF_THRESHOLD = 0.1  # Maximum allowed difference between shoulders (10%)
+DOUBLE_PATTERN_LEVEL_THRESHOLD = 0.03  # Maximum allowed difference between tops/bottoms (3%)
+
 # Risk Management
 RISK_PER_TRADE = 0.015  # 1.5% of balance per trade
 RISK_REWARD_RATIO = 2  # Risk:Reward ratio (1:2)
