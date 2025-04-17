@@ -51,6 +51,15 @@ class Strategy:
         self.hs_pattern_shoulder_diff_threshold = config.HS_PATTERN_SHOULDER_DIFF_THRESHOLD
         self.double_pattern_level_threshold = config.DOUBLE_PATTERN_LEVEL_THRESHOLD
 
+        # Multi-timeframe analysis parameters
+        self.multi_timeframe_enabled = config.MULTI_TIMEFRAME_ENABLED
+        self.confirmation_timeframes = config.CONFIRMATION_TIMEFRAMES
+        self.mtf_alignment_required = config.MTF_ALIGNMENT_REQUIRED
+        self.mtf_weight_main = config.MTF_WEIGHT_MAIN
+        self.mtf_weight_lower = config.MTF_WEIGHT_LOWER
+        self.mtf_weight_higher = config.MTF_WEIGHT_HIGHER
+        self.mtf_volatility_adjustment = config.MTF_VOLATILITY_ADJUSTMENT
+
         # Initialize pattern recognition module
         self.pattern_recognition = PatternRecognition(
             logger=self.logger,
@@ -128,9 +137,234 @@ class Strategy:
                 self.logger.error(f"Failed to calculate indicators: {e}")
             return None
 
-    def generate_signal(self, df):
+    def generate_signal(self, df, mtf_data=None):
         """
         Generate trading signal based on indicators.
+
+        Args:
+            df (pandas.DataFrame): Price data with indicators for the main timeframe.
+            mtf_data (dict, optional): Dictionary of DataFrames with indicators for other timeframes.
+                                      Format: {timeframe: dataframe}
+
+        Returns:
+            str: Signal (LONG, SHORT, NONE).
+        """
+        if df is None or df.empty or len(df) < 2:
+            if self.logger:
+                self.logger.error("Cannot generate signal: Insufficient data")
+            return "NONE"
+
+        try:
+            # Use multi-timeframe analysis if enabled and data is available
+            if self.multi_timeframe_enabled and mtf_data is not None:
+                signal, score, timeframe_scores = self.analyze_multi_timeframe(df, mtf_data)
+
+                # Log detailed multi-timeframe analysis results
+                if self.logger and signal != "NONE":
+                    self.logger.info(f"Multi-timeframe signal generated: {signal} (score: {score:.2f})")
+                    for tf, tf_score in timeframe_scores.items():
+                        self.logger.debug(f"  {tf} timeframe score: {tf_score:.2f}")
+
+                return signal
+            else:
+                # Fall back to single timeframe analysis
+                return self._generate_signal_from_single_timeframe(df)
+
+        except Exception as e:
+            if self.logger:
+                self.logger.error(f"Failed to generate signal: {e}")
+            return "NONE"
+
+    def analyze_timeframe(self, df, timeframe):
+        """
+        Analyze a single timeframe and return a signal score.
+
+        Args:
+            df (pandas.DataFrame): Price data with indicators for the timeframe.
+            timeframe (str): The timeframe being analyzed.
+
+        Returns:
+            float: Signal score (-1.0 to 1.0) where:
+                  - Positive values indicate bullish bias (higher = stronger)
+                  - Negative values indicate bearish bias (lower = stronger)
+                  - Zero indicates no clear bias
+        """
+        if df is None or df.empty or len(df) < 2:
+            if self.logger:
+                self.logger.debug(f"Cannot analyze {timeframe} timeframe: Insufficient data")
+            return 0.0
+
+        try:
+            # Get the last two rows for crossover detection
+            current = df.iloc[-1]
+            previous = df.iloc[-2]
+
+            # Initialize score
+            score = 0.0
+
+            # EMA trend and crossover (weight: 0.3)
+            fast_ema_current = current[f'ema_{self.fast_ema}']
+            fast_ema_previous = previous[f'ema_{self.fast_ema}']
+            slow_ema_current = current[f'ema_{self.slow_ema}']
+            slow_ema_previous = previous[f'ema_{self.slow_ema}']
+
+            # EMA crossover
+            ema_crossover_up = fast_ema_previous < slow_ema_previous and fast_ema_current > slow_ema_current
+            ema_crossover_down = fast_ema_previous > slow_ema_previous and fast_ema_current < slow_ema_current
+
+            # EMA trend
+            ema_trend = (fast_ema_current - fast_ema_previous) / fast_ema_previous
+
+            if ema_crossover_up:
+                score += 0.3
+            elif ema_crossover_down:
+                score -= 0.3
+            else:
+                # Add smaller score based on EMA trend direction
+                score += min(max(ema_trend * 10, -0.15), 0.15)  # Cap at ±0.15
+
+            # RSI (weight: 0.2)
+            rsi_current = current['rsi']
+
+            # RSI oversold/overbought
+            if rsi_current < 30:  # Oversold
+                score += 0.15
+            elif rsi_current > 70:  # Overbought
+                score -= 0.15
+            else:
+                # Normalize RSI between -0.1 and 0.1 for values between 30 and 70
+                normalized_rsi = ((rsi_current - 50) / 20) * 0.1
+                score += normalized_rsi
+
+            # MACD (weight: 0.25)
+            macd_current = current['macd']
+            macd_signal_current = current['macd_signal']
+            macd_hist_current = current['macd_hist']
+            macd_previous = previous['macd']
+            macd_signal_previous = previous['macd_signal']
+
+            # MACD crossover
+            macd_crossover_up = macd_previous < macd_signal_previous and macd_current > macd_signal_current
+            macd_crossover_down = macd_previous > macd_signal_previous and macd_current < macd_signal_current
+
+            if macd_crossover_up:
+                score += 0.2
+            elif macd_crossover_down:
+                score -= 0.2
+            else:
+                # Add smaller score based on histogram
+                score += min(max(macd_hist_current * 5, -0.15), 0.15)  # Cap at ±0.15
+
+            # Volume (weight: 0.15)
+            volume_ratio = current['volume_ratio']
+            obv_slope = current['obv_slope']
+
+            # Volume confirmation
+            if volume_ratio > self.volume_threshold:
+                if obv_slope > 0:
+                    score += 0.15
+                elif obv_slope < 0:
+                    score -= 0.15
+
+            # Pattern recognition (weight: 0.1)
+            if self.pattern_recognition_enabled and 'bullish_pattern_strength' in current and 'bearish_pattern_strength' in current:
+                bullish_strength = current['bullish_pattern_strength']
+                bearish_strength = current['bearish_pattern_strength']
+
+                # Normalize pattern strength to -0.1 to 0.1 range
+                pattern_score = (bullish_strength - bearish_strength) / 10
+                score += min(max(pattern_score, -0.1), 0.1)  # Cap at ±0.1
+
+            # Cap final score between -1.0 and 1.0
+            score = min(max(score, -1.0), 1.0)
+
+            if self.logger:
+                self.logger.debug(f"{timeframe} analysis score: {score:.2f}")
+
+            return score
+
+        except Exception as e:
+            if self.logger:
+                self.logger.error(f"Failed to analyze {timeframe} timeframe: {e}")
+            return 0.0
+
+    def analyze_multi_timeframe(self, main_df, mtf_data):
+        """
+        Analyze multiple timeframes and generate a weighted signal score.
+
+        Args:
+            main_df (pandas.DataFrame): Price data with indicators for the main timeframe.
+            mtf_data (dict): Dictionary of DataFrames with indicators for other timeframes.
+                             Format: {timeframe: dataframe}
+
+        Returns:
+            tuple: (signal, score, timeframe_scores)
+                  - signal: 'LONG', 'SHORT', or 'NONE'
+                  - score: Overall weighted score (-1.0 to 1.0)
+                  - timeframe_scores: Dictionary of scores by timeframe
+        """
+        if not self.multi_timeframe_enabled or mtf_data is None:
+            # If multi-timeframe analysis is disabled, use only the main timeframe
+            signal = self._generate_signal_from_single_timeframe(main_df)
+            return signal, 0.0, {}
+
+        try:
+            main_timeframe = config.TIMEFRAME
+            timeframe_scores = {}
+            timeframe_weights = {}
+
+            # Get main timeframe score
+            main_score = self.analyze_timeframe(main_df, main_timeframe)
+            timeframe_scores[main_timeframe] = main_score
+            timeframe_weights[main_timeframe] = self.mtf_weight_main
+
+            # Get scores for other timeframes
+            for timeframe, df in mtf_data.items():
+                if df is not None and not df.empty:
+                    score = self.analyze_timeframe(df, timeframe)
+                    timeframe_scores[timeframe] = score
+
+                    # Assign weight based on timeframe (higher timeframes get more weight)
+                    if self._is_higher_timeframe(timeframe, main_timeframe):
+                        timeframe_weights[timeframe] = self.mtf_weight_higher
+                    else:
+                        timeframe_weights[timeframe] = self.mtf_weight_lower
+
+            # Adjust weights based on volatility if enabled
+            if self.mtf_volatility_adjustment and 'atr' in main_df.columns:
+                self._adjust_weights_by_volatility(timeframe_weights, main_df)
+
+            # Calculate weighted average score
+            total_weight = sum(timeframe_weights.values())
+            weighted_score = sum(score * timeframe_weights[tf] for tf, score in timeframe_scores.items()) / total_weight
+
+            # Count aligned timeframes
+            aligned_bullish = sum(1 for score in timeframe_scores.values() if score > 0.3)
+            aligned_bearish = sum(1 for score in timeframe_scores.values() if score < -0.3)
+
+            # Generate signal based on weighted score and alignment requirement
+            signal = "NONE"
+            if weighted_score > 0.4 and aligned_bullish >= self.mtf_alignment_required:
+                signal = "LONG"
+            elif weighted_score < -0.4 and aligned_bearish >= self.mtf_alignment_required:
+                signal = "SHORT"
+
+            if self.logger:
+                self.logger.info(f"Multi-timeframe analysis - Weighted score: {weighted_score:.2f}, Signal: {signal}")
+                self.logger.debug(f"Timeframe scores: {timeframe_scores}")
+                self.logger.debug(f"Aligned timeframes - Bullish: {aligned_bullish}, Bearish: {aligned_bearish}")
+
+            return signal, weighted_score, timeframe_scores
+
+        except Exception as e:
+            if self.logger:
+                self.logger.error(f"Failed to perform multi-timeframe analysis: {e}")
+            return "NONE", 0.0, {}
+
+    def _generate_signal_from_single_timeframe(self, df):
+        """
+        Generate trading signal based on indicators from a single timeframe.
+        This is the original signal generation logic.
 
         Args:
             df (pandas.DataFrame): Price data with indicators.
@@ -139,8 +373,6 @@ class Strategy:
             str: Signal (LONG, SHORT, NONE).
         """
         if df is None or df.empty or len(df) < 2:
-            if self.logger:
-                self.logger.error("Cannot generate signal: Insufficient data")
             return "NONE"
 
         try:
@@ -199,9 +431,6 @@ class Strategy:
                 pattern_confirms_bullish = bullish_pattern_strength >= self.pattern_strength_threshold
                 pattern_confirms_bearish = bearish_pattern_strength >= self.pattern_strength_threshold
 
-                if self.logger:
-                    self.logger.debug(f"Pattern strengths - Bullish: {bullish_pattern_strength}, Bearish: {bearish_pattern_strength}")
-
             # Generate signal with volume and pattern confirmation if required
             if ema_crossover_up and rsi_not_overbought and macd_positive:
                 # Check volume confirmation
@@ -210,14 +439,9 @@ class Strategy:
                 pattern_confirmed = not self.pattern_confirmation_required or pattern_confirms_bullish
 
                 if volume_confirmed and pattern_confirmed:
-                    signal = "LONG"
+                    return "LONG"
                 else:
-                    signal = "NONE"  # Confirmation failed
-                    if self.logger:
-                        if not volume_confirmed:
-                            self.logger.debug("LONG signal rejected: Insufficient volume confirmation")
-                        if not pattern_confirmed:
-                            self.logger.debug("LONG signal rejected: Insufficient pattern confirmation")
+                    return "NONE"  # Confirmation failed
             elif ema_crossover_down and rsi_not_oversold and macd_negative:
                 # Check volume confirmation
                 volume_confirmed = not self.volume_required or volume_confirms_bearish
@@ -225,99 +449,81 @@ class Strategy:
                 pattern_confirmed = not self.pattern_confirmation_required or pattern_confirms_bearish
 
                 if volume_confirmed and pattern_confirmed:
-                    signal = "SHORT"
+                    return "SHORT"
                 else:
-                    signal = "NONE"  # Confirmation failed
-                    if self.logger:
-                        if not volume_confirmed:
-                            self.logger.debug("SHORT signal rejected: Insufficient volume confirmation")
-                        if not pattern_confirmed:
-                            self.logger.debug("SHORT signal rejected: Insufficient pattern confirmation")
+                    return "NONE"  # Confirmation failed
             else:
-                signal = "NONE"
-
-            # Log indicator values
-            if self.logger:
-                indicators = {
-                    f"EMA{self.fast_ema}": round(fast_ema_current, 2),
-                    f"EMA{self.slow_ema}": round(slow_ema_current, 2),
-                    "RSI": round(rsi_current, 2),
-                    "MACD": round(macd_current, 4),
-                    "MACD Signal": round(macd_signal_current, 4),
-                    "MACD Hist": round(macd_hist_current, 4),
-                    "Volume Ratio": round(volume_ratio, 2),
-                    "OBV Slope": round(obv_slope, 2),
-                    "ATR": round(current['atr'], 2)
-                }
-
-                # Add pattern information if enabled
-                if self.pattern_recognition_enabled and 'bullish_pattern_strength' in current and 'bearish_pattern_strength' in current:
-                    indicators["Bullish Pattern Strength"] = current['bullish_pattern_strength']
-                    indicators["Bearish Pattern Strength"] = current['bearish_pattern_strength']
-
-                    # Add detected patterns
-                    bullish_patterns = []
-                    bearish_patterns = []
-
-                    # Check for bullish patterns
-                    pattern_columns = ['hammer', 'bullish_engulfing', 'bullish_harami', 'tweezer_bottom',
-                                      'morning_star', 'three_white_soldiers', 'bullish_marubozu']
-                    for pattern in pattern_columns:
-                        if pattern in current and current[pattern]:
-                            bullish_patterns.append(pattern.replace('_', ' ').title())
-
-                    # Check for complex bullish patterns if enabled
-                    if self.complex_patterns_enabled:
-                        complex_bullish_patterns = ['inverse_head_and_shoulders', 'double_bottom']
-                        for pattern in complex_bullish_patterns:
-                            if pattern in current and current[pattern]:
-                                bullish_patterns.append(pattern.replace('_', ' ').title())
-
-                    # Check for bearish patterns
-                    pattern_columns = ['shooting_star', 'inverted_hammer', 'bearish_engulfing', 'bearish_harami',
-                                      'tweezer_top', 'evening_star', 'three_black_crows', 'bearish_marubozu']
-                    for pattern in pattern_columns:
-                        if pattern in current and current[pattern]:
-                            bearish_patterns.append(pattern.replace('_', ' ').title())
-
-                    # Check for complex bearish patterns if enabled
-                    if self.complex_patterns_enabled:
-                        complex_bearish_patterns = ['head_and_shoulders', 'double_top']
-                        for pattern in complex_bearish_patterns:
-                            if pattern in current and current[pattern]:
-                                bearish_patterns.append(pattern.replace('_', ' ').title())
-
-                    if bullish_patterns:
-                        indicators["Bullish Patterns"] = ", ".join(bullish_patterns)
-                    if bearish_patterns:
-                        indicators["Bearish Patterns"] = ", ".join(bearish_patterns)
-
-                self.logger.debug(f"Current indicators: {indicators}")
-
-                if signal != "NONE":
-                    confirmation_info = []
-                    if volume_confirms_bullish if signal == "LONG" else volume_confirms_bearish:
-                        confirmation_info.append("Volume confirms")
-                    if pattern_confirms_bullish if signal == "LONG" else pattern_confirms_bearish:
-                        confirmation_info.append("Pattern confirms")
-
-                    confirmation_str = ", ".join(confirmation_info) if confirmation_info else "No confirmations"
-                    self.logger.info(f"Generated signal: {signal} ({confirmation_str})")
-
-            return signal
+                return "NONE"
 
         except Exception as e:
             if self.logger:
-                self.logger.error(f"Failed to generate signal: {e}")
+                self.logger.error(f"Failed to generate signal from single timeframe: {e}")
             return "NONE"
 
-    def should_exit_position(self, df, position_side):
+    def _is_higher_timeframe(self, timeframe1, timeframe2):
+        """
+        Check if timeframe1 is higher than timeframe2.
+
+        Args:
+            timeframe1 (str): First timeframe (e.g., '1h', '4h', '1d').
+            timeframe2 (str): Second timeframe (e.g., '1h', '4h', '1d').
+
+        Returns:
+            bool: True if timeframe1 is higher than timeframe2, False otherwise.
+        """
+        # Define timeframe hierarchy (from lowest to highest)
+        hierarchy = {
+            '1m': 1, '3m': 2, '5m': 3, '15m': 4, '30m': 5,
+            '1h': 6, '2h': 7, '4h': 8, '6h': 9, '12h': 10,
+            '1d': 11, '3d': 12, '1w': 13, '1M': 14
+        }
+
+        # Get hierarchy values
+        value1 = hierarchy.get(timeframe1, 0)
+        value2 = hierarchy.get(timeframe2, 0)
+
+        return value1 > value2
+
+    def _adjust_weights_by_volatility(self, weights, df):
+        """
+        Adjust timeframe weights based on market volatility.
+        In high volatility, give more weight to higher timeframes.
+        In low volatility, weights remain balanced.
+
+        Args:
+            weights (dict): Dictionary of timeframe weights to adjust.
+            df (pandas.DataFrame): Price data with ATR indicator.
+        """
+        try:
+            # Calculate volatility using ATR relative to price
+            current_price = df.iloc[-1]['close']
+            current_atr = df.iloc[-1]['atr']
+            volatility_ratio = current_atr / current_price
+
+            # Adjust weights based on volatility
+            # Higher volatility = more weight to higher timeframes
+            if volatility_ratio > 0.03:  # High volatility
+                for tf in weights:
+                    if self._is_higher_timeframe(tf, config.TIMEFRAME):
+                        weights[tf] *= 1.3  # Increase higher timeframe weight
+                    elif tf != config.TIMEFRAME:  # Lower timeframe
+                        weights[tf] *= 0.7  # Decrease lower timeframe weight
+
+            if self.logger:
+                self.logger.debug(f"Adjusted weights by volatility (ratio: {volatility_ratio:.4f}): {weights}")
+
+        except Exception as e:
+            if self.logger:
+                self.logger.error(f"Failed to adjust weights by volatility: {e}")
+
+    def should_exit_position(self, df, position_side, mtf_data=None):
         """
         Check if position should be exited based on opposite signal.
 
         Args:
             df (pandas.DataFrame): Price data with indicators.
             position_side (str): Current position side (Buy or Sell).
+            mtf_data (dict, optional): Dictionary of DataFrames with indicators for other timeframes.
 
         Returns:
             bool: True if position should be exited, False otherwise.
@@ -326,7 +532,11 @@ class Strategy:
             return False
 
         try:
-            signal = self.generate_signal(df)
+            # Generate signal using multi-timeframe analysis if enabled and data is available
+            if self.multi_timeframe_enabled and mtf_data is not None:
+                signal, score, _ = self.analyze_multi_timeframe(df, mtf_data)
+            else:
+                signal = self.generate_signal(df)
 
             # Exit long position on SHORT signal
             if position_side == "Buy" and signal == "SHORT":

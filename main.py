@@ -57,6 +57,10 @@ class TradingBot:
         self.check_interval = config.CHECK_INTERVAL
         self.dry_run = config.DRY_RUN
 
+        # Multi-timeframe parameters
+        self.multi_timeframe_enabled = config.MULTI_TIMEFRAME_ENABLED
+        self.confirmation_timeframes = config.CONFIRMATION_TIMEFRAMES
+
         # Set up signal handlers for graceful shutdown
         signal.signal(signal.SIGINT, self.shutdown)
         signal.signal(signal.SIGTERM, self.shutdown)
@@ -82,52 +86,75 @@ class TradingBot:
 
         while self.running:
             try:
-                # Get historical data
-                klines = self.bybit_client.get_klines(
+                # Get historical data for main timeframe
+                main_klines = self.bybit_client.get_klines(
                     symbol=self.symbol,
                     interval=self.timeframe,
                     limit=100
                 )
 
-                if klines is None or klines.empty:
-                    self.logger.error("Failed to get historical data, retrying...")
+                if main_klines is None or main_klines.empty:
+                    self.logger.error("Failed to get historical data for main timeframe, retrying...")
                     time.sleep(self.check_interval)
                     continue
 
-                # Calculate indicators
-                price_data = self.strategy.calculate_indicators(klines)
-                if price_data is None:
-                    self.logger.error("Failed to calculate indicators, retrying...")
+                # Calculate indicators for main timeframe
+                main_data = self.strategy.calculate_indicators(main_klines)
+                if main_data is None:
+                    self.logger.error("Failed to calculate indicators for main timeframe, retrying...")
                     time.sleep(self.check_interval)
                     continue
+
+                # Get data for confirmation timeframes if multi-timeframe analysis is enabled
+                mtf_data = {}
+                if self.multi_timeframe_enabled:
+                    self.logger.debug(f"Fetching data for confirmation timeframes: {self.confirmation_timeframes}")
+                    for tf in self.confirmation_timeframes:
+                        tf_klines = self.bybit_client.get_klines(
+                            symbol=self.symbol,
+                            interval=tf,
+                            limit=100
+                        )
+
+                        if tf_klines is not None and not tf_klines.empty:
+                            tf_data = self.strategy.calculate_indicators(tf_klines)
+                            if tf_data is not None:
+                                mtf_data[tf] = tf_data
+                                self.logger.debug(f"Successfully processed {tf} timeframe data")
+                            else:
+                                self.logger.warning(f"Failed to calculate indicators for {tf} timeframe")
+                        else:
+                            self.logger.warning(f"Failed to get historical data for {tf} timeframe")
+
+                    self.logger.debug(f"Processed {len(mtf_data)} confirmation timeframes")
 
                 # Check if we should exit current position based on opposite signal
-                self.order_manager.check_and_exit_on_signal(price_data)
+                self.order_manager.check_and_exit_on_signal(main_data, mtf_data if self.multi_timeframe_enabled else None)
 
-                # Generate trading signal
-                signal = self.strategy.generate_signal(price_data)
+                # Generate trading signal with multi-timeframe confirmation if enabled
+                signal = self.strategy.generate_signal(main_data, mtf_data if self.multi_timeframe_enabled else None)
 
                 # Log signal
                 if signal != "NONE":
                     # Prepare indicators dictionary
                     indicators = {
-                        f"EMA{config.FAST_EMA}": round(price_data.iloc[-1][f'ema_{config.FAST_EMA}'], 2),
-                        f"EMA{config.SLOW_EMA}": round(price_data.iloc[-1][f'ema_{config.SLOW_EMA}'], 2),
-                        "RSI": round(price_data.iloc[-1]['rsi'], 2),
-                        "MACD": round(price_data.iloc[-1]['macd'], 4),
-                        "MACD Signal": round(price_data.iloc[-1]['macd_signal'], 4),
-                        "MACD Hist": round(price_data.iloc[-1]['macd_hist'], 4),
-                        "Volume Ratio": round(price_data.iloc[-1]['volume_ratio'], 2),
-                        "OBV Slope": round(price_data.iloc[-1]['obv_slope'], 2),
-                        "ATR": round(price_data.iloc[-1]['atr'], 2)
+                        f"EMA{config.FAST_EMA}": round(main_data.iloc[-1][f'ema_{config.FAST_EMA}'], 2),
+                        f"EMA{config.SLOW_EMA}": round(main_data.iloc[-1][f'ema_{config.SLOW_EMA}'], 2),
+                        "RSI": round(main_data.iloc[-1]['rsi'], 2),
+                        "MACD": round(main_data.iloc[-1]['macd'], 4),
+                        "MACD Signal": round(main_data.iloc[-1]['macd_signal'], 4),
+                        "MACD Hist": round(main_data.iloc[-1]['macd_hist'], 4),
+                        "Volume Ratio": round(main_data.iloc[-1]['volume_ratio'], 2),
+                        "OBV Slope": round(main_data.iloc[-1]['obv_slope'], 2),
+                        "ATR": round(main_data.iloc[-1]['atr'], 2)
                     }
 
                     # Add pattern information if available
                     if config.PATTERN_RECOGNITION_ENABLED:
-                        if 'bullish_pattern_strength' in price_data.iloc[-1]:
-                            indicators["Bullish Pattern Strength"] = price_data.iloc[-1]['bullish_pattern_strength']
-                        if 'bearish_pattern_strength' in price_data.iloc[-1]:
-                            indicators["Bearish Pattern Strength"] = price_data.iloc[-1]['bearish_pattern_strength']
+                        if 'bullish_pattern_strength' in main_data.iloc[-1]:
+                            indicators["Bullish Pattern Strength"] = main_data.iloc[-1]['bullish_pattern_strength']
+                        if 'bearish_pattern_strength' in main_data.iloc[-1]:
+                            indicators["Bearish Pattern Strength"] = main_data.iloc[-1]['bearish_pattern_strength']
 
                         # Add detected patterns
                         pattern_columns = ['hammer', 'bullish_engulfing', 'bullish_harami', 'tweezer_bottom',
@@ -137,11 +164,16 @@ class TradingBot:
 
                         detected_patterns = []
                         for pattern in pattern_columns:
-                            if pattern in price_data.iloc[-1] and price_data.iloc[-1][pattern]:
+                            if pattern in main_data.iloc[-1] and main_data.iloc[-1][pattern]:
                                 detected_patterns.append(pattern.replace('_', ' ').title())
 
                         if detected_patterns:
                             indicators["Detected Patterns"] = ", ".join(detected_patterns)
+
+                    # Add multi-timeframe information if available
+                    if self.multi_timeframe_enabled and mtf_data:
+                        indicators["Multi-Timeframe"] = "Enabled"
+                        indicators["Confirmation Timeframes"] = ", ".join(mtf_data.keys())
 
                     self.logger.signal(
                         symbol=self.symbol,
@@ -152,7 +184,7 @@ class TradingBot:
 
                 # Execute trading signal
                 if signal in ["LONG", "SHORT"]:
-                    self.order_manager.enter_position(signal, price_data)
+                    self.order_manager.enter_position(signal, main_data)
 
                 # Get and log balance
                 balance_info = self.bybit_client.get_wallet_balance()

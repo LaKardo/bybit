@@ -37,6 +37,7 @@
         <li><b>On-Balance Volume (OBV)</b> for volume trend direction</li>
         <li><b>ATR</b> for volatility-based stops</li>
         <li><b>Candlestick pattern</b> recognition</li>
+        <li><b>Multi-timeframe analysis</b> for signal confirmation</li>
       </ul>
     </td>
   </tr>
@@ -152,6 +153,15 @@ COMPLEX_PATTERNS_ENABLED = True  # Whether to use complex chart patterns (H&S, D
 COMPLEX_PATTERN_MIN_CANDLES = 14  # Minimum number of candles to analyze for complex patterns
 HS_PATTERN_SHOULDER_DIFF_THRESHOLD = 0.1  # Maximum allowed difference between shoulders (10%)
 DOUBLE_PATTERN_LEVEL_THRESHOLD = 0.03  # Maximum allowed difference between tops/bottoms (3%)
+
+# Multi-Timeframe Analysis Parameters
+MULTI_TIMEFRAME_ENABLED = True  # Whether to use multi-timeframe analysis
+CONFIRMATION_TIMEFRAMES = ["15m", "4h", "1d"]  # Timeframes to use for confirmation
+MTF_ALIGNMENT_REQUIRED = 2  # Minimum number of timeframes that must align with the signal
+MTF_WEIGHT_MAIN = 1.0  # Weight of the main timeframe
+MTF_WEIGHT_LOWER = 0.7  # Weight of lower timeframes (faster)
+MTF_WEIGHT_HIGHER = 1.2  # Weight of higher timeframes (slower)
+MTF_VOLATILITY_ADJUSTMENT = True  # Whether to adjust timeframe weights based on market volatility
 ```
 
 ### Risk Management
@@ -207,7 +217,8 @@ python main.py
 3. MACD histogram is **positive** OR MACD line crosses **above** signal line
 4. **Volume confirmation**: Current volume > 1.5x its 20-period MA AND OBV is trending up
 5. **Pattern confirmation**: Bullish candlestick pattern(s) with strength >= threshold
-6. No active short position
+6. **Multi-timeframe confirmation**: Signal is confirmed across multiple timeframes
+7. No active short position
 
 ### Short (Sell) Signal 🔽
 1. Fast EMA(20) crosses **below** Slow EMA(50)
@@ -215,11 +226,21 @@ python main.py
 3. MACD histogram is **negative** OR MACD line crosses **below** signal line
 4. **Volume confirmation**: Current volume > 1.5x its 20-period MA AND OBV is trending down
 5. **Pattern confirmation**: Bearish candlestick pattern(s) with strength >= threshold
-6. No active long position
+6. **Multi-timeframe confirmation**: Signal is confirmed across multiple timeframes
+7. No active long position
 
 ### Exit Signal 🚪
 1. Stop-Loss or Take-Profit is hit
 2. Opposite signal appears
+
+### Multi-Timeframe Analysis
+The bot uses multiple timeframes to confirm trading signals, reducing false signals and improving trade quality:
+
+1. **Primary Timeframe**: Main trading timeframe (e.g., 1h)
+2. **Confirmation Timeframes**: Additional timeframes (e.g., 15m, 4h, 1d)
+3. **Weighted Scoring**: Higher timeframes have more weight in the decision
+4. **Alignment Requirement**: Minimum number of timeframes that must align
+5. **Volatility Adjustment**: During high volatility, higher timeframes get more weight
 
 ### Chart Patterns
 
@@ -328,7 +349,6 @@ python main.py
 <summary>Click to view potential enhancements</summary>
 
 ### Advanced Strategy Enhancements
-- **Multi-Timeframe Analysis**: Implement signal confirmation across multiple timeframes
 - **Machine Learning Integration**: Add predictive models for enhanced signal generation
 
 ### Risk Management Improvements

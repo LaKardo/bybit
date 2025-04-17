@@ -41,6 +41,15 @@ COMPLEX_PATTERN_MIN_CANDLES = 14  # Minimum number of candles to analyze for com
 HS_PATTERN_SHOULDER_DIFF_THRESHOLD = 0.1  # Maximum allowed difference between shoulders (10%)
 DOUBLE_PATTERN_LEVEL_THRESHOLD = 0.03  # Maximum allowed difference between tops/bottoms (3%)
 
+# Multi-Timeframe Analysis Parameters
+MULTI_TIMEFRAME_ENABLED = True  # Whether to use multi-timeframe analysis
+CONFIRMATION_TIMEFRAMES = ["15m", "4h", "1d"]  # Timeframes to use for confirmation (in addition to main timeframe)
+MTF_ALIGNMENT_REQUIRED = 2  # Minimum number of timeframes that must align with the signal (including main timeframe)
+MTF_WEIGHT_MAIN = 1.0  # Weight of the main timeframe
+MTF_WEIGHT_LOWER = 0.7  # Weight of lower timeframes (faster)
+MTF_WEIGHT_HIGHER = 1.2  # Weight of higher timeframes (slower)
+MTF_VOLATILITY_ADJUSTMENT = True  # Whether to adjust timeframe weights based on market volatility
+
 # Risk Management
 RISK_PER_TRADE = 0.015  # 1.5% of balance per trade
 RISK_REWARD_RATIO = 2  # Risk:Reward ratio (1:2)
