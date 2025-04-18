@@ -86,7 +86,7 @@ LOG_LEVEL = "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
 LOG_FILE = "trading_bot.log"
 
 # WebSocket Settings
-USE_WEBSOCKET = False  # Use WebSocket for real-time data (set to False due to connection issues)
+USE_WEBSOCKET = True  # Use WebSocket for real-time data (potential fix applied in bybit_client.py)
 WS_RECONNECT_INTERVAL = 60  # Seconds between WebSocket reconnection attempts
 
 # Advanced Settings
@@ -100,6 +100,6 @@ WEB_INTERFACE_ENABLED = True  # Enable web interface
 WEB_HOST = "0.0.0.0"  # Web interface host (0.0.0.0 to allow external connections)
 WEB_PORT = 5000  # Web interface port
 WEB_DEBUG = False  # Enable debug mode for web interface
-WEB_USERNAME = "admin"  # Web interface username
-WEB_PASSWORD = "admin"  # Web interface password (change this!)
-WEB_SECRET_KEY = "a9d8e7f6c5b4a3c2d1e0f9g8h7i6j5k4l3m2n1o0p"  # Secret key for session management
+WEB_USERNAME = os.getenv("WEB_USERNAME", "admin")  # Web interface username (Set in .env)
+WEB_PASSWORD = os.getenv("WEB_PASSWORD", "admin")  # Web interface password (Set in .env - CHANGE THIS!)
+WEB_SECRET_KEY = os.getenv("WEB_SECRET_KEY", "a9d8e7f6c5b4a3c2d1e0f9g8h7i6j5k4l3m2n1o0p")  # Secret key for session management (Set in .env)
