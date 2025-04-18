@@ -16,6 +16,7 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, BooleanField, SubmitField, SelectField
 from wtforms.validators import DataRequired
 import config
+from utils import convert_timeframe
 
 # Global variables
 trading_bot = None
@@ -152,11 +153,15 @@ class WebInterface:
                     'message': 'Bot not initialized'
                 })
 
+            # Convert timeframe to human-readable format for display
+            human_timeframe = convert_timeframe(self.bot.timeframe, from_format='bybit_v5', to_format='human')
+
             return jsonify({
                 'status': 'OK',
                 'running': self.bot.running,
                 'symbol': self.bot.symbol,
                 'timeframe': self.bot.timeframe,
+                'timeframe_display': human_timeframe,  # Human-readable timeframe for display
                 'dry_run': self.bot.dry_run,
                 'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             })
@@ -224,6 +229,7 @@ class WebInterface:
                     'message': 'Bot or API client not initialized'
                 })
 
+            # Get wallet balance using V5 API
             balance = self.bot.bybit_client.get_wallet_balance()
 
             if balance is None:
@@ -232,9 +238,22 @@ class WebInterface:
                     'message': 'Failed to get balance'
                 })
 
+            # Format balance data for API V5
+            formatted_balance = {
+                'available_balance': balance.get('available_balance', 0),
+                'wallet_balance': balance.get('wallet_balance', 0),
+                'unrealized_pnl': balance.get('unrealized_pnl', 0),
+                'equity': balance.get('equity', 0),
+                'used_margin': balance.get('used_margin', 0),
+                'used_margin_rate': balance.get('used_margin_rate', 0),
+                'margin_ratio': balance.get('margin_ratio', 0),
+                'free_margin': balance.get('free_margin', 0),
+                'coin': balance.get('coin', 'USDT')
+            }
+
             return jsonify({
                 'status': 'OK',
-                'balance': balance
+                'balance': formatted_balance
             })
 
         @self.app.route('/api/positions')
@@ -247,7 +266,8 @@ class WebInterface:
                     'message': 'Bot or API client not initialized'
                 })
 
-            positions = self.bot.bybit_client.get_positions()
+            # Get positions using V5 API
+            positions = self.bot.bybit_client.get_positions(self.bot.symbol)
 
             if positions is None:
                 return jsonify({
@@ -255,9 +275,30 @@ class WebInterface:
                     'message': 'Failed to get positions'
                 })
 
+            # Format positions data for API V5
+            formatted_positions = []
+            for pos in positions:
+                formatted_pos = {
+                    'symbol': pos.get('symbol', ''),
+                    'side': pos.get('side', ''),
+                    'size': pos.get('size', 0),
+                    'position_value': pos.get('position_value', 0),
+                    'entry_price': pos.get('entry_price', 0),
+                    'mark_price': pos.get('mark_price', 0),
+                    'unrealized_pnl': pos.get('unrealized_pnl', 0),
+                    'leverage': pos.get('leverage', 0),
+                    'liq_price': pos.get('liq_price', 0),
+                    'take_profit': pos.get('take_profit', 0),
+                    'stop_loss': pos.get('stop_loss', 0),
+                    'trailing_stop': pos.get('trailing_stop', 0),
+                    'created_time': pos.get('created_time', ''),
+                    'updated_time': pos.get('updated_time', '')
+                }
+                formatted_positions.append(formatted_pos)
+
             return jsonify({
                 'status': 'OK',
-                'positions': positions
+                'positions': formatted_positions
             })
 
         @self.app.route('/api/close_position', methods=['POST'])
@@ -270,20 +311,24 @@ class WebInterface:
                     'message': 'Bot or order manager not initialized'
                 })
 
-            result = self.bot.order_manager.exit_position(reason="MANUAL_WEB")
+            # Get symbol from request or use bot's symbol
+            symbol = request.json.get('symbol', self.bot.symbol) if request.json else self.bot.symbol
+
+            # Close position using V5 API
+            result = self.bot.order_manager.exit_position(symbol=symbol, reason="MANUAL_WEB")
 
             if result:
                 if self.logger:
-                    self.logger.info("Position closed via web interface")
+                    self.logger.info(f"Position for {symbol} closed via web interface")
 
                 return jsonify({
                     'status': 'OK',
-                    'message': 'Position closed'
+                    'message': f'Position for {symbol} closed'
                 })
             else:
                 return jsonify({
                     'status': 'ERROR',
-                    'message': 'Failed to close position'
+                    'message': f'Failed to close position for {symbol}'
                 })
 
         @self.app.route('/api/update_settings', methods=['POST'])
@@ -415,8 +460,12 @@ class WebInterface:
             interval = request.args.get('interval', self.bot.timeframe)
             limit = int(request.args.get('limit', 100))
 
-            # Get market data from API
-            klines = self.bot.bybit_client.get_klines(symbol=symbol, interval=interval, limit=limit)
+            # Check if WebSocket is enabled and use real-time data if available
+            if self.bot.use_websocket:
+                klines = self.bot.bybit_client.get_realtime_kline(symbol=symbol, interval=interval)
+            else:
+                # Get market data from REST API
+                klines = self.bot.bybit_client.get_klines(symbol=symbol, interval=interval, limit=limit)
 
             if klines is None or klines.empty:
                 return jsonify({
@@ -433,16 +482,34 @@ class WebInterface:
                     'high': float(row['high']),
                     'low': float(row['low']),
                     'close': float(row['close']),
-                    'volume': float(row['volume'])
+                    'volume': float(row['volume']),
+                    'turnover': float(row['turnover']) if 'turnover' in row else 0,
+                    'confirm': bool(row['confirm']) if 'confirm' in row else True
                 })
 
-            # Get current ticker
+            # Get current ticker using V5 API
             ticker = self.bot.bybit_client.get_ticker(symbol=symbol)
+
+            # Format ticker data for API V5
+            formatted_ticker = {
+                'symbol': ticker.get('symbol', symbol),
+                'lastPrice': ticker.get('lastPrice', 0),
+                'markPrice': ticker.get('markPrice', 0),
+                'indexPrice': ticker.get('indexPrice', 0),
+                'highPrice24h': ticker.get('highPrice24h', 0),
+                'lowPrice24h': ticker.get('lowPrice24h', 0),
+                'volume24h': ticker.get('volume24h', 0),
+                'turnover24h': ticker.get('turnover24h', 0),
+                'price24hPcnt': ticker.get('price24hPcnt', 0),
+                'openInterest': ticker.get('openInterest', 0),
+                'fundingRate': ticker.get('fundingRate', 0),
+                'nextFundingTime': ticker.get('nextFundingTime', 0)
+            }
 
             return jsonify({
                 'status': 'OK',
                 'market_data': market_data,
-                'ticker': ticker
+                'ticker': formatted_ticker
             })
 
         @self.app.route('/api/strategy_parameters')

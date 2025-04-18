@@ -1,0 +1,106 @@
+2025-04-18 14:48:11,136 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.1.113:5000
+2025-04-18 14:48:11,137 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-04-18 14:48:13,468 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:48:13] "[33mGET /socket.io/?EIO=4&transport=polling&t=PP8kbJW HTTP/1.1[0m" 404 -
+2025-04-18 14:48:19,170 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:48:19] "[33mGET /socket.io/?EIO=4&transport=polling&t=PP8kcnT HTTP/1.1[0m" 404 -
+2025-04-18 14:48:25,485 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:48:25] "[33mGET /socket.io/?EIO=4&transport=polling&t=PP8keFD HTTP/1.1[0m" 404 -
+2025-04-18 14:48:28,063 - simple_web_app - ERROR - Exception on /login [GET]
+Traceback (most recent call last):
+  File "C:\Users\Admin\AppData\Roaming\Python\Python313\site-packages\flask\app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+  File "C:\Users\Admin\AppData\Roaming\Python\Python313\site-packages\flask\app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "C:\Users\Admin\AppData\Roaming\Python\Python313\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "C:\Users\Admin\AppData\Roaming\Python\Python313\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\Admin\Desktop\боты\bybit\simple_web_app.py", line 128, in login
+    return render_template('login.html')
+  File "C:\Users\Admin\AppData\Roaming\Python\Python313\site-packages\flask\templating.py", line 150, in render_template
+    return _render(app, template, context)
+  File "C:\Users\Admin\AppData\Roaming\Python\Python313\site-packages\flask\templating.py", line 131, in _render
+    rv = template.render(context)
+  File "C:\Users\Admin\AppData\Roaming\Python\Python313\site-packages\jinja2\environment.py", line 1295, in render
+    self.environment.handle_exception()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Admin\AppData\Roaming\Python\Python313\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "C:\Users\Admin\Desktop\боты\bybit\templates\login.html", line 1, in top-level template code
+    {% extends "base.html" %}
+  File "C:\Users\Admin\Desktop\боты\bybit\templates\base.html", line 27, in top-level template code
+    <a class="navbar-brand" href="{{ url_for('main.index') }}">
+    ^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Roaming\Python\Python313\site-packages\flask\app.py", line 1121, in url_for
+    return self.handle_url_build_error(error, endpoint, values)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Roaming\Python\Python313\site-packages\flask\app.py", line 1110, in url_for
+    rv = url_adapter.build(  # type: ignore[union-attr]
+        endpoint,
+    ...<3 lines>...
+        force_external=_external,
+    )
+  File "C:\Users\Admin\AppData\Roaming\Python\Python313\site-packages\werkzeug\routing\map.py", line 924, in build
+    raise BuildError(endpoint, values, method, self)
+werkzeug.routing.exceptions.BuildError: Could not build url for endpoint 'main.index'. Did you mean 'index' instead?
+2025-04-18 14:48:28,083 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:48:28] "[35m[1mGET /login HTTP/1.1[0m" 500 -
+2025-04-18 14:48:31,168 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:48:31] "[33mGET /socket.io/?EIO=4&transport=polling&t=PP8kfiy HTTP/1.1[0m" 404 -
+2025-04-18 14:48:37,475 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:48:37] "[33mGET /socket.io/?EIO=4&transport=polling&t=PP8khAh HTTP/1.1[0m" 404 -
+2025-04-18 14:48:43,167 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:48:43] "[33mGET /socket.io/?EIO=4&transport=polling&t=PP8kieQ HTTP/1.1[0m" 404 -
+2025-04-18 14:48:49,471 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:48:49] "[33mGET /socket.io/?EIO=4&transport=polling&t=PP8kk64 HTTP/1.1[0m" 404 -
+2025-04-18 14:51:26,601 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.1.113:5000
+2025-04-18 14:51:26,601 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-04-18 14:51:27,529 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:51:27] "[33mGET /socket.io/?EIO=4&transport=polling&t=PP8lKg_ HTTP/1.1[0m" 404 -
+2025-04-18 14:51:33,163 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:51:33] "[33mGET /socket.io/?EIO=4&transport=polling&t=PP8lM8c HTTP/1.1[0m" 404 -
+2025-04-18 14:51:39,474 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:51:39] "[33mGET /socket.io/?EIO=4&transport=polling&t=PP8lNcP HTTP/1.1[0m" 404 -
+2025-04-18 14:51:45,158 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:51:45] "[33mGET /socket.io/?EIO=4&transport=polling&t=PP8lP43 HTTP/1.1[0m" 404 -
+2025-04-18 14:51:47,686 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:51:47] "GET /login HTTP/1.1" 200 -
+2025-04-18 14:51:47,773 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:51:47] "GET /static/css/style.css HTTP/1.1" 200 -
+2025-04-18 14:51:47,869 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:51:47] "GET /static/css/modern-style.css HTTP/1.1" 200 -
+2025-04-18 14:51:51,470 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:51:51] "[33mGET /socket.io/?EIO=4&transport=polling&t=PP8lQXp HTTP/1.1[0m" 404 -
+2025-04-18 14:51:57,170 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:51:57] "[33mGET /socket.io/?EIO=4&transport=polling&t=PP8lR_k HTTP/1.1[0m" 404 -
+2025-04-18 14:52:03,479 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:52:03] "[33mGET /socket.io/?EIO=4&transport=polling&t=PP8lTTS HTTP/1.1[0m" 404 -
+2025-04-18 14:52:09,171 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:52:09] "[33mGET /socket.io/?EIO=4&transport=polling&t=PP8lUxG HTTP/1.1[0m" 404 -
+2025-04-18 14:52:10,804 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:52:10] "[32mGET / HTTP/1.1[0m" 302 -
+2025-04-18 14:52:10,811 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:52:10] "GET /login?next=/ HTTP/1.1" 200 -
+2025-04-18 14:52:11,087 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:52:11] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2025-04-18 14:52:11,165 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:52:11] "[36mGET /static/css/modern-style.css HTTP/1.1[0m" 304 -
+2025-04-18 14:52:15,476 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:52:15] "[33mGET /socket.io/?EIO=4&transport=polling&t=PP8lWOu HTTP/1.1[0m" 404 -
+2025-04-18 14:52:21,168 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:52:21] "[33mGET /socket.io/?EIO=4&transport=polling&t=PP8lXsj HTTP/1.1[0m" 404 -
+2025-04-18 14:52:27,474 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:52:27] "[33mGET /socket.io/?EIO=4&transport=polling&t=PP8lZKO HTTP/1.1[0m" 404 -
+2025-04-18 14:52:33,160 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:52:33] "[33mGET /socket.io/?EIO=4&transport=polling&t=PP8lao4 HTTP/1.1[0m" 404 -
+2025-04-18 14:52:39,469 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:52:39] "[33mGET /socket.io/?EIO=4&transport=polling&t=PP8lcFn HTTP/1.1[0m" 404 -
+2025-04-18 14:52:45,159 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:52:45] "[33mGET /socket.io/?EIO=4&transport=polling&t=PP8ldjZ HTTP/1.1[0m" 404 -
+2025-04-18 14:52:51,472 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:52:51] "[33mGET /socket.io/?EIO=4&transport=polling&t=PP8lfBN HTTP/1.1[0m" 404 -
+2025-04-18 14:52:57,168 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:52:57] "[33mGET /socket.io/?EIO=4&transport=polling&t=PP8lgfC HTTP/1.1[0m" 404 -
+2025-04-18 15:00:28,604 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.1.113:5000
+2025-04-18 15:00:28,604 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-04-18 15:00:28,606 - werkzeug - INFO -  * Restarting with stat
+2025-04-18 15:00:29,169 - werkzeug - WARNING -  * Debugger is active!
+2025-04-18 15:00:29,172 - werkzeug - INFO -  * Debugger PIN: 466-762-056
+2025-04-18 15:01:04,118 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 15:01:04] "GET /login HTTP/1.1" 200 -
+2025-04-18 15:01:04,199 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 15:01:04] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2025-04-18 15:01:04,321 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 15:01:04] "[36mGET /static/css/modern-style.css HTTP/1.1[0m" 304 -
+2025-04-18 15:01:11,304 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 15:01:11] "GET /login HTTP/1.1" 200 -
+2025-04-18 15:01:11,356 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 15:01:11] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2025-04-18 15:01:11,551 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 15:01:11] "[36mGET /static/css/modern-style.css HTTP/1.1[0m" 304 -
+2025-04-18 15:07:58,338 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.1.113:5000
+2025-04-18 15:07:58,339 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-04-18 15:07:58,341 - werkzeug - INFO -  * Restarting with stat
+2025-04-18 15:07:58,917 - werkzeug - WARNING -  * Debugger is active!
+2025-04-18 15:07:58,966 - werkzeug - INFO -  * Debugger PIN: 466-762-056
+2025-04-18 15:08:14,451 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 15:08:14] "GET /login HTTP/1.1" 200 -
+2025-04-18 15:08:33,044 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 15:08:33] "[32mPOST /login HTTP/1.1[0m" 302 -
+2025-04-18 15:08:33,079 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 15:08:33] "GET / HTTP/1.1" 200 -
+2025-04-18 15:08:33,883 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 15:08:33] "GET / HTTP/1.1" 200 -

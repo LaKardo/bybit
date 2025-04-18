@@ -16,6 +16,8 @@ import pickle
 import threading
 import json
 from utils import is_invalid_api_key
+import numpy as np
+from collections import defaultdict
 
 class BybitAPIClient:
     """
@@ -42,6 +44,20 @@ class BybitAPIClient:
             api_secret=self.api_secret,
             recv_window=5000  # Default receive window as per Bybit docs
         )
+
+        # MACD parameters
+        self.macd_fast = config.MACD_FAST
+        self.macd_slow = config.MACD_SLOW
+        self.macd_signal = config.MACD_SIGNAL
+
+        # Additional MACD parameters
+        self.macd_adjust = False  # Whether to adjust EMA calculation
+        self.macd_price_col = 'close'  # Column to use for MACD calculation
+
+        # Store calculated MACD data with timestamp for cache invalidation
+        self.macd_data = defaultdict(dict)
+        self.macd_last_update = defaultdict(int)  # Timestamp of last update
+        self.macd_cache_ttl = 60  # Cache TTL in seconds
 
         # Import traceback here for use in _log_error method
         import traceback
@@ -150,6 +166,13 @@ class BybitAPIClient:
             error_msg = f"API {action} failed: {response.get('retMsg')}"
             if self.logger:
                 self.logger.error(error_msg)
+                # Log more details about the response for debugging
+                self.logger.debug(f"Full response: {response}")
+                # Check if it's an authentication error
+                if response.get("retCode") == 401 or response.get("retCode") == 10003:
+                    self.logger.error(f"Authentication error detected. Please check your API keys.")
+                elif response.get("retCode") == -1 and "Authentication error" in str(response.get("retMsg", "")):
+                    self.logger.error(f"Authentication error detected. Please check your API keys.")
             return None
 
     def _retry_api_call(self, func, *args, **kwargs):
@@ -178,8 +201,8 @@ class BybitAPIClient:
                 response = func(*args, **kwargs)
 
                 # Check if the response indicates an authentication error
-                if response and (response.get("retCode") == 401 or response.get("retCode") == 10003 or
-                               "401" in str(response) or "ErrCode: 401" in str(response)):
+                # Only check for specific authentication error codes
+                if response and (response.get("retCode") == 401 or response.get("retCode") == 10003):
                     if self.logger:
                         self.logger.error(f"Authentication error: {response.get('retMsg', 'Unknown error')}")
                         self.logger.error(f"Please check your API keys in config.py")
@@ -200,8 +223,11 @@ class BybitAPIClient:
                         import traceback
                         self.logger.error(f"Detailed error: {traceback.format_exc()}")
                         self.logger.error(f"Function: {func.__name__}, Args: {args}, Kwargs: {kwargs}")
-                    # Check if it's an authentication error
-                    if "401" in str(e) or "API key is invalid" in str(e) or "ErrCode: 401" in str(e) or "Http status code is not 200" in str(e):
+                    # Check if it's an authentication error - use more specific checks
+                    if ("401" in str(e) and "status code" in str(e)) or \
+                       "API key is invalid" in str(e) or \
+                       "ErrCode: 401" in str(e) or \
+                       ("Http status code is not 200" in str(e) and "authentication" in str(e).lower()):
                         if self.logger:
                             self.logger.error(f"Authentication error: {e}")
                             self.logger.error(f"Please check your API keys in config.py")
@@ -373,7 +399,136 @@ class BybitAPIClient:
             if self.logger:
                 self.logger.warning(f"Failed to save to cache: {e}")
 
-    def get_klines(self, symbol=None, interval=None, limit=200):
+    def calculate_macd(self, df, start_idx=None, end_idx=None, force_recalculate=False):
+        """
+        Calculate MACD for the given DataFrame with optimized performance.
+
+        Args:
+            df (pandas.DataFrame): DataFrame with price column (default: 'close').
+            start_idx (int, optional): Start index for calculation. Defaults to None (calculate for all data).
+            end_idx (int, optional): End index for calculation. Defaults to None (calculate until the end).
+            force_recalculate (bool, optional): Force recalculation even if MACD columns exist. Defaults to False.
+
+        Returns:
+            pandas.DataFrame: DataFrame with MACD columns added.
+        """
+        if self.logger:
+            self.logger.debug(f"Calculating MACD with parameters: fast={self.macd_fast}, slow={self.macd_slow}, signal={self.macd_signal}")
+
+        # Check if we already have MACD columns and don't need to recalculate
+        if not force_recalculate and 'macd' in df.columns and 'macd_signal' in df.columns and 'macd_hist' in df.columns:
+            if start_idx is None and end_idx is None:
+                if self.logger:
+                    self.logger.debug("MACD columns already exist, skipping calculation")
+                return df
+
+        try:
+            # Make sure we have enough data for MACD calculation
+            min_periods = max(self.macd_slow, self.macd_fast, self.macd_signal)
+
+            # Set default indices if not provided
+            if start_idx is None:
+                start_idx = 0
+            if end_idx is None:
+                end_idx = len(df)
+
+            # Validate indices
+            start_idx = max(0, start_idx)
+            end_idx = min(len(df), end_idx)
+
+            # Check if we have enough data
+            if len(df) < min_periods:
+                if self.logger:
+                    self.logger.warning(f"Not enough data for MACD calculation. Need at least {min_periods} rows, got {len(df)}. Using default values.")
+                    self.logger.warning(f"This may be due to insufficient historical data available for the selected timeframe.")
+                    self.logger.warning(f"Try using a shorter timeframe or waiting for more data to accumulate.")
+
+                # Initialize columns with default values if they don't exist
+                if 'macd' not in df.columns:
+                    df['macd'] = 0.0
+                if 'macd_signal' not in df.columns:
+                    df['macd_signal'] = 0.0
+                if 'macd_hist' not in df.columns:
+                    df['macd_hist'] = 0.0
+                return df
+
+            # Make sure the price column exists and has no NaN values
+            if self.macd_price_col not in df.columns:
+                if self.logger:
+                    self.logger.warning(f"Price column '{self.macd_price_col}' not found, using 'close' instead")
+                self.macd_price_col = 'close'
+
+            # Check for NaN values in the price column
+            if df[self.macd_price_col].isna().any():
+                if self.logger:
+                    self.logger.warning(f"Price column '{self.macd_price_col}' contains NaN values, filling with forward fill")
+                # Fill NaN values with forward fill, then backward fill for any remaining NaNs
+                df[self.macd_price_col] = df[self.macd_price_col].fillna(method='ffill').fillna(method='bfill')
+
+            # Convert to numpy array for faster calculation
+            price_array = df[self.macd_price_col].values
+
+            # Calculate EMAs for MACD using vectorized operations
+            # For EMA calculation: EMA_today = price_today * k + EMA_yesterday * (1 - k)
+            # where k = 2 / (span + 1)
+            fast_k = 2.0 / (self.macd_fast + 1)
+            slow_k = 2.0 / (self.macd_slow + 1)
+            signal_k = 2.0 / (self.macd_signal + 1)
+
+            # Initialize arrays for EMA calculation
+            fast_ema = np.zeros_like(price_array)
+            slow_ema = np.zeros_like(price_array)
+
+            # Calculate initial SMA values for the first points
+            fast_ema[0:self.macd_fast] = np.mean(price_array[0:self.macd_fast])
+            slow_ema[0:self.macd_slow] = np.mean(price_array[0:self.macd_slow])
+
+            # Calculate EMAs using vectorized operations
+            for i in range(self.macd_fast, len(price_array)):
+                fast_ema[i] = price_array[i] * fast_k + fast_ema[i-1] * (1 - fast_k)
+
+            for i in range(self.macd_slow, len(price_array)):
+                slow_ema[i] = price_array[i] * slow_k + slow_ema[i-1] * (1 - slow_k)
+
+            # Calculate MACD line
+            macd_line = fast_ema - slow_ema
+
+            # Calculate signal line
+            signal_line = np.zeros_like(macd_line)
+            signal_line[0:self.macd_signal] = np.mean(macd_line[0:self.macd_signal])
+
+            for i in range(self.macd_signal, len(macd_line)):
+                signal_line[i] = macd_line[i] * signal_k + signal_line[i-1] * (1 - signal_k)
+
+            # Calculate histogram
+            histogram = macd_line - signal_line
+
+            # Assign to dataframe
+            df['macd'] = macd_line
+            df['macd_signal'] = signal_line
+            df['macd_hist'] = histogram
+
+            # Fill any remaining NaN values with 0
+            df['macd'] = df['macd'].fillna(0.0)
+            df['macd_signal'] = df['macd_signal'].fillna(0.0)
+            df['macd_hist'] = df['macd_hist'].fillna(0.0)
+
+            if self.logger:
+                self.logger.debug("MACD calculated successfully using optimized method")
+
+        except Exception as e:
+            self._log_error(e, "Failed to calculate MACD")
+            # Initialize columns with default values if they don't exist
+            if 'macd' not in df.columns:
+                df['macd'] = 0.0
+            if 'macd_signal' not in df.columns:
+                df['macd_signal'] = 0.0
+            if 'macd_hist' not in df.columns:
+                df['macd_hist'] = 0.0
+
+        return df
+
+    def get_klines(self, symbol=None, interval=None, limit=None):
         """
         Get historical klines (candlestick data).
 
@@ -388,8 +543,17 @@ class BybitAPIClient:
         symbol = symbol or config.SYMBOL
         interval = interval or config.TIMEFRAME
 
+        # Calculate minimum required data points for MACD calculation
+        min_periods = max(self.macd_slow, self.macd_fast, self.macd_signal)
+        # Add buffer to ensure we have enough data (3x the minimum required)
+        min_required = min_periods * 3
+
+        # If limit is not provided or less than minimum required, use minimum required
+        if limit is None or limit < min_required:
+            limit = min_required
+
         if self.logger:
-            self.logger.debug(f"Getting {limit} klines for {symbol} ({interval})")
+            self.logger.debug(f"Getting {limit} klines for {symbol} ({interval}). Minimum required for MACD: {min_required}")
 
         # Check cache if enabled
         if self.cache_enabled:
@@ -413,25 +577,47 @@ class BybitAPIClient:
                 if self.logger:
                     self.logger.debug(f"Attempt {attempt+1}: Fetching klines for {symbol} ({interval}) from {days_ago} days ago")
 
+                # Log the parameters being sent
+                params = {
+                    "category": "linear",  # linear for USDT perpetual, can be spot, inverse, option
+                    "symbol": symbol,
+                    "interval": interval,
+                    "start": start_time,
+                    "end": end_time,
+                    "limit": min(limit, 1000)  # Ensure we don't exceed API limit but get enough data for MACD
+                }
+
+                if self.logger:
+                    self.logger.debug(f"Get klines parameters: {params}")
+
                 # Get klines using PyBit V5 API
                 response = self._retry_api_call(
                     self.client.get_kline,
-                    category="linear",  # linear for USDT perpetual, can be spot, inverse, option
-                    symbol=symbol,
-                    interval=interval,
-                    start=start_time,
-                    end=end_time,
-                    limit=min(limit, 1000)  # Ensure we don't exceed API limit
+                    **params
                 )
 
                 if self.logger:
-                    self.logger.debug(f"API response for klines: {response}")
+                    self.logger.debug(f"API response status for klines: {response.get('retCode') if response else 'No response'}")
 
                 # Check response
-                if not response or response.get("retCode") != 0 or not response.get("result"):
+                if not response or not response.get("result"):
                     if self.logger:
                         self.logger.warning(f"No klines data returned for {symbol} ({interval}). Response: {response}")
                     continue  # Try next time range
+
+                # Handle the case where retCode is not 0 but it's not an authentication error
+                if response.get("retCode") != 0:
+                    # If it's a -1 retCode with "Authentication error" message but the retMsg is "OK",
+                    # it's likely a false positive, so we can continue
+                    if response.get("retCode") == -1 and \
+                       "Authentication error" in str(response.get("retMsg", "")) and \
+                       "OK" in str(response):
+                        if self.logger:
+                            self.logger.warning(f"Ignoring false authentication error for {symbol} ({interval}). Response: {response}")
+                    else:
+                        if self.logger:
+                            self.logger.warning(f"API returned non-zero retCode for {symbol} ({interval}). Response: {response}")
+                        continue  # Try next time range
 
                 # Extract data
                 klines_data = response.get("result", {}).get("list", [])
@@ -441,23 +627,48 @@ class BybitAPIClient:
                         self.logger.warning(f"Empty klines data for {symbol} ({interval}) from {days_ago} days ago.")
                     continue  # Try next time range
 
-                # Convert to DataFrame
-                df = pd.DataFrame(klines_data, columns=[
-                    "timestamp", "open", "high", "low", "close", "volume", "turnover", "confirm"
-                ])
+                # Convert to DataFrame - check the number of columns in the response
+                if len(klines_data) > 0 and len(klines_data[0]) == 7:
+                    # V5 API returns 7 columns: timestamp, open, high, low, close, volume, turnover
+                    df = pd.DataFrame(klines_data, columns=[
+                        "timestamp", "open", "high", "low", "close", "volume", "turnover"
+                    ])
+                    # Add confirm column with default value True
+                    df["confirm"] = True
+                else:
+                    # Fallback to original 8 columns format
+                    df = pd.DataFrame(klines_data, columns=[
+                        "timestamp", "open", "high", "low", "close", "volume", "turnover", "confirm"
+                    ])
 
-                # Convert string values to appropriate types
+                # Convert string values to appropriate types with error handling
                 for col in ["open", "high", "low", "close", "volume", "turnover"]:
-                    df[col] = pd.to_numeric(df[col])
+                    try:
+                        df[col] = pd.to_numeric(df[col])
+                    except Exception as e:
+                        if self.logger:
+                            self.logger.warning(f"Error converting column {col} to numeric: {e}. Using original values.")
 
-                # Convert timestamp to datetime
-                df["timestamp"] = pd.to_datetime(df["timestamp"].astype(int), unit="ms")
+                # Convert timestamp to datetime with error handling
+                try:
+                    df["timestamp"] = pd.to_datetime(df["timestamp"].astype(int), unit="ms")
+                except Exception as e:
+                    if self.logger:
+                        self.logger.warning(f"Error converting timestamp to datetime: {e}. Using original values.")
 
-                # Convert confirm to boolean
-                df["confirm"] = df["confirm"] == "1"
+                # Convert confirm to boolean with error handling
+                try:
+                    df["confirm"] = df["confirm"] == "1"
+                except Exception as e:
+                    if self.logger:
+                        self.logger.warning(f"Error converting confirm to boolean: {e}. Using original values.")
 
                 # Sort by timestamp (oldest first)
-                df = df.sort_values("timestamp").reset_index(drop=True)
+                try:
+                    df = df.sort_values("timestamp").reset_index(drop=True)
+                except Exception as e:
+                    if self.logger:
+                        self.logger.warning(f"Error sorting by timestamp: {e}. Using original order.")
 
                 if self.logger:
                     self.logger.info(f"Successfully retrieved {len(df)} klines for {symbol} ({interval}) from {days_ago} days ago")
@@ -483,20 +694,44 @@ class BybitAPIClient:
             if self.logger:
                 self.logger.debug(f"Final attempt: Fetching klines for {symbol} ({interval}) with default time range")
 
+            # Log the parameters being sent
+            params = {
+                "category": "linear",
+                "symbol": symbol,
+                "interval": interval,
+                "limit": min(limit, 1000)  # Use a higher limit to ensure enough data for MACD
+            }
+
+            if self.logger:
+                self.logger.debug(f"Final attempt get klines parameters: {params}")
+
             response = self._retry_api_call(
                 self.client.get_kline,
-                category="linear",
-                symbol=symbol,
-                interval=interval,
-                limit=min(limit, 200)  # Use a smaller limit for better chance of success
+                **params
             )
 
-            if not response or response.get("retCode") != 0 or not response.get("result"):
+            if not response or not response.get("result"):
                 if self.logger:
                     self.logger.error(f"Final attempt failed for {symbol} ({interval}). Response: {response}")
                 if self.logger:
                     self.logger.error(f"Failed to get real data for {symbol} ({interval}) after multiple attempts")
                 return None
+
+            # Handle the case where retCode is not 0 but it's not an authentication error
+            if response.get("retCode") != 0:
+                # If it's a -1 retCode with "Authentication error" message but the retMsg is "OK",
+                # it's likely a false positive, so we can continue
+                if response.get("retCode") == -1 and \
+                   "Authentication error" in str(response.get("retMsg", "")) and \
+                   "OK" in str(response):
+                    if self.logger:
+                        self.logger.warning(f"Ignoring false authentication error in final attempt for {symbol} ({interval}). Response: {response}")
+                else:
+                    if self.logger:
+                        self.logger.error(f"Final attempt returned non-zero retCode for {symbol} ({interval}). Response: {response}")
+                    if self.logger:
+                        self.logger.error(f"Failed to get real data for {symbol} ({interval}) after multiple attempts")
+                    return None
 
             klines_data = response.get("result", {}).get("list", [])
 
@@ -507,17 +742,48 @@ class BybitAPIClient:
                     self.logger.error(f"Empty data returned for {symbol} ({interval}) from Bybit API")
                 return None
 
-            # Process data as before
-            df = pd.DataFrame(klines_data, columns=[
-                "timestamp", "open", "high", "low", "close", "volume", "turnover", "confirm"
-            ])
+            # Process data as before with error handling - check the number of columns in the response
+            if len(klines_data) > 0 and len(klines_data[0]) == 7:
+                # V5 API returns 7 columns: timestamp, open, high, low, close, volume, turnover
+                df = pd.DataFrame(klines_data, columns=[
+                    "timestamp", "open", "high", "low", "close", "volume", "turnover"
+                ])
+                # Add confirm column with default value True
+                df["confirm"] = True
+            else:
+                # Fallback to original 8 columns format
+                df = pd.DataFrame(klines_data, columns=[
+                    "timestamp", "open", "high", "low", "close", "volume", "turnover", "confirm"
+                ])
 
+            # Convert string values to appropriate types with error handling
             for col in ["open", "high", "low", "close", "volume", "turnover"]:
-                df[col] = pd.to_numeric(df[col])
+                try:
+                    df[col] = pd.to_numeric(df[col])
+                except Exception as e:
+                    if self.logger:
+                        self.logger.warning(f"Error converting column {col} to numeric: {e}. Using original values.")
 
-            df["timestamp"] = pd.to_datetime(df["timestamp"].astype(int), unit="ms")
-            df["confirm"] = df["confirm"] == "1"
-            df = df.sort_values("timestamp").reset_index(drop=True)
+            # Convert timestamp to datetime with error handling
+            try:
+                df["timestamp"] = pd.to_datetime(df["timestamp"].astype(int), unit="ms")
+            except Exception as e:
+                if self.logger:
+                    self.logger.warning(f"Error converting timestamp to datetime: {e}. Using original values.")
+
+            # Convert confirm to boolean with error handling
+            try:
+                df["confirm"] = df["confirm"] == "1"
+            except Exception as e:
+                if self.logger:
+                    self.logger.warning(f"Error converting confirm to boolean: {e}. Using original values.")
+
+            # Sort by timestamp (oldest first)
+            try:
+                df = df.sort_values("timestamp").reset_index(drop=True)
+            except Exception as e:
+                if self.logger:
+                    self.logger.warning(f"Error sorting by timestamp: {e}. Using original order.")
 
             if self.logger:
                 self.logger.info(f"Final attempt succeeded: Retrieved {len(df)} klines for {symbol} ({interval})")
@@ -628,16 +894,43 @@ class BybitAPIClient:
 
             # Create response with proper fallbacks for each field
             try:
-                # Safely convert values to float with better error handling
-                available_balance = self._safe_float_conversion(usdt_balance.get("availableToWithdraw"), "availableToWithdraw", 0)
+                # Get wallet balance first since we might need it for available balance
                 wallet_balance = self._safe_float_conversion(usdt_balance.get("walletBalance"), "walletBalance", 0)
+
+                # Get available balance with special handling
+                available_to_withdraw = usdt_balance.get("availableToWithdraw")
+
+                # Handle different cases for availableToWithdraw
+                if available_to_withdraw is None or (isinstance(available_to_withdraw, str) and not available_to_withdraw.strip()):
+                    # If it's None or empty string, use wallet balance
+                    if self.logger:
+                        self.logger.debug(f"Field 'availableToWithdraw' is {available_to_withdraw}, using walletBalance value {wallet_balance}")
+                    available_balance = wallet_balance
+                else:
+                    try:
+                        # Try to convert to float
+                        available_balance = float(available_to_withdraw)
+                    except (ValueError, TypeError):
+                        # If conversion fails, use wallet balance
+                        if self.logger:
+                            self.logger.debug(f"Could not convert 'availableToWithdraw' value '{available_to_withdraw}' to float. Using walletBalance {wallet_balance}")
+                        available_balance = wallet_balance
+
+                # Get unrealized PnL
                 unrealized_pnl = self._safe_float_conversion(usdt_balance.get("unrealisedPnl"), "unrealisedPnl", 0)
 
-                return {
+                # Create final response
+                result = {
                     "available_balance": available_balance,
                     "wallet_balance": wallet_balance,
                     "unrealized_pnl": unrealized_pnl
                 }
+
+                # Log the final values for debugging
+                if self.logger:
+                    self.logger.debug(f"Wallet balance values: {result}")
+
+                return result
             except Exception as e:
                 if self.logger:
                     self.logger.error(f"Error converting balance values to float: {e}")
@@ -689,14 +982,16 @@ class BybitAPIClient:
             # Convert to the format expected by the bot
             result = []
             for pos in positions:
-                if float(pos.get('contracts', 0)) > 0:
+                # Check if position size is greater than 0
+                size = float(pos.get('size', 0))
+                if size > 0:
                     result.append({
                         "symbol": symbol,
-                        "side": "Buy" if pos.get('side') == 'long' else "Sell",
-                        "size": pos.get('contracts', 0),
-                        "entryPrice": pos.get('entryPrice', 0),
-                        "liqPrice": pos.get('liquidationPrice', 0),
-                        "unrealisedPnl": pos.get('unrealizedPnl', 0)
+                        "side": pos.get('side', ''),  # 'Buy' or 'Sell'
+                        "size": size,
+                        "entryPrice": float(pos.get('avgPrice', 0)),
+                        "liqPrice": float(pos.get('liqPrice', 0)),
+                        "unrealisedPnl": float(pos.get('unrealisedPnl', 0))
                     })
 
             return result
@@ -720,6 +1015,13 @@ class BybitAPIClient:
         if self.logger:
             self.logger.debug(f"Getting ticker for {symbol}")
 
+        # Try to get real-time ticker data from WebSocket first
+        if self.ws_enabled and self.ws_client is not None:
+            realtime_ticker = self.get_realtime_ticker(symbol)
+            if realtime_ticker is not None:
+                return realtime_ticker
+
+        # Fall back to REST API if WebSocket data is not available
         try:
             # Get ticker using PyBit V5 API
             response = self._retry_api_call(
@@ -744,22 +1046,128 @@ class BybitAPIClient:
 
             ticker = tickers[0]
 
-            # Convert to the format expected by the bot
+            # Convert to the format expected by the bot with safe conversion to float
             return {
                 "symbol": symbol,
-                "lastPrice": ticker.get("lastPrice", "0"),
-                "indexPrice": ticker.get("indexPrice", "0"),
-                "markPrice": ticker.get("markPrice", "0"),
-                "prevPrice24h": ticker.get("prevPrice24h", "0"),
-                "price24hPcnt": ticker.get("price24hPcnt", "0"),
-                "highPrice24h": ticker.get("highPrice24h", "0"),
-                "lowPrice24h": ticker.get("lowPrice24h", "0"),
-                "volume24h": ticker.get("volume24h", "0"),
-                "turnover24h": ticker.get("turnover24h", "0")
+                "lastPrice": self._safe_float_conversion(ticker.get("lastPrice"), "lastPrice", 0.0),
+                "indexPrice": self._safe_float_conversion(ticker.get("indexPrice"), "indexPrice", 0.0),
+                "markPrice": self._safe_float_conversion(ticker.get("markPrice"), "markPrice", 0.0),
+                "prevPrice24h": self._safe_float_conversion(ticker.get("prevPrice24h"), "prevPrice24h", 0.0),
+                "price24hPcnt": self._safe_float_conversion(ticker.get("price24hPcnt"), "price24hPcnt", 0.0),
+                "highPrice24h": self._safe_float_conversion(ticker.get("highPrice24h"), "highPrice24h", 0.0),
+                "lowPrice24h": self._safe_float_conversion(ticker.get("lowPrice24h"), "lowPrice24h", 0.0),
+                "volume24h": self._safe_float_conversion(ticker.get("volume24h"), "volume24h", 0.0),
+                "turnover24h": self._safe_float_conversion(ticker.get("turnover24h"), "turnover24h", 0.0)
             }
 
         except Exception as e:
             self._log_error(e, "Failed to get ticker")
+            return None
+
+    def get_realtime_ticker(self, symbol=None):
+        """
+        Get real-time ticker data from WebSocket.
+
+        Args:
+            symbol (str, optional): Trading symbol. Defaults to config.SYMBOL.
+
+        Returns:
+            dict: Ticker information or None on error.
+        """
+        symbol = symbol or config.SYMBOL
+
+        if self.logger:
+            self.logger.debug(f"Getting real-time ticker data for {symbol}")
+
+        # If WebSocket is not enabled or client is not initialized, return None
+        if not self.ws_enabled or self.ws_client is None:
+            return None
+
+        # Format topic
+        topic = f"tickers.{symbol}"
+
+        # Check if we're subscribed to this topic
+        is_subscribed = topic in self.ws_callbacks
+
+        # Subscribe if not subscribed
+        if not is_subscribed:
+            if self.logger:
+                self.logger.debug(f"Not subscribed to {topic}, attempting to subscribe")
+            try:
+                # Check if PyBit already has this subscription
+                # This is a workaround for PyBit not providing a way to check subscriptions
+                if hasattr(self.ws_client, '_callback_directory'):
+                    callback_directory = self.ws_client._callback_directory
+                    if topic in callback_directory:
+                        if self.logger:
+                            self.logger.debug(f"PyBit already subscribed to {topic}, adding to local tracking")
+                        # Add to our local tracking
+                        self.ws_callbacks[topic] = None
+                        is_subscribed = True
+
+                # Only try to subscribe if we're not already subscribed
+                if not is_subscribed:
+                    if not self.subscribe_ticker(symbol):
+                        if self.logger:
+                            self.logger.warning(f"Failed to subscribe to ticker data for {symbol}")
+                        return None
+            except Exception as e:
+                # If we get an error about already being subscribed, just continue
+                if "You have already subscribed to this topic" in str(e):
+                    if self.logger:
+                        self.logger.debug(f"Already subscribed to {topic} (from exception)")
+                    # Add to our local tracking
+                    self.ws_callbacks[topic] = None
+                else:
+                    # For other errors, log and return None
+                    self._log_error(e, f"Failed to subscribe to ticker data for {symbol}")
+                    return None
+
+        # Get data from WebSocket
+        with self.ws_lock:
+            data = self.ws_data.get(topic)
+
+        if not data:
+            if self.logger:
+                self.logger.debug(f"No real-time ticker data available for {symbol}")
+            return None
+
+        try:
+            # Parse data
+            ticker_data = data.get("data", {})
+            if not ticker_data:
+                if self.logger:
+                    self.logger.warning(f"Empty ticker data received from WebSocket for {symbol}")
+                return None
+
+            # Check if ticker_data is a list (new format) or a dict (old format)
+            if isinstance(ticker_data, list) and len(ticker_data) > 0:
+                ticker_data = ticker_data[0]  # Take the first item if it's a list
+
+            if not isinstance(ticker_data, dict):
+                if self.logger:
+                    self.logger.warning(f"Unexpected ticker data format: {type(ticker_data)}")
+                return None
+
+            if self.logger:
+                self.logger.debug(f"Received WebSocket ticker data for {symbol}")
+
+            # Convert to the format expected by the bot with safe conversion to float
+            return {
+                "symbol": symbol,
+                "lastPrice": self._safe_float_conversion(ticker_data.get("lastPrice"), "lastPrice", 0.0),
+                "indexPrice": self._safe_float_conversion(ticker_data.get("indexPrice"), "indexPrice", 0.0),
+                "markPrice": self._safe_float_conversion(ticker_data.get("markPrice"), "markPrice", 0.0),
+                "prevPrice24h": self._safe_float_conversion(ticker_data.get("prevPrice24h"), "prevPrice24h", 0.0),
+                "price24hPcnt": self._safe_float_conversion(ticker_data.get("price24hPcnt"), "price24hPcnt", 0.0),
+                "highPrice24h": self._safe_float_conversion(ticker_data.get("highPrice24h"), "highPrice24h", 0.0),
+                "lowPrice24h": self._safe_float_conversion(ticker_data.get("lowPrice24h"), "lowPrice24h", 0.0),
+                "volume24h": self._safe_float_conversion(ticker_data.get("volume24h"), "volume24h", 0.0),
+                "turnover24h": self._safe_float_conversion(ticker_data.get("turnover24h"), "turnover24h", 0.0)
+            }
+
+        except Exception as e:
+            self._log_error(e, "Failed to parse real-time ticker data")
             return None
 
     def place_market_order(self, symbol=None, side=None, qty=None, reduce_only=False,
@@ -804,24 +1212,36 @@ class BybitAPIClient:
                 "symbol": symbol,
                 "side": side,         # Buy or Sell
                 "orderType": "Market", # Market, Limit, etc.
-                "qty": str(qty),      # Order quantity
-                "reduceOnly": reduce_only  # True to reduce position only
+                "qty": str(qty),      # Order quantity must be string
+                "reduceOnly": reduce_only,  # True to reduce position only
+                "positionIdx": 0      # 0 for one-way mode
             }
 
+            # Add take profit and stop loss if provided
             if take_profit:
                 params["takeProfit"] = str(take_profit)
                 params["tpTriggerBy"] = "LastPrice"
                 params["tpslMode"] = "Full"
+                params["tpOrderType"] = "Market"
 
             if stop_loss:
                 params["stopLoss"] = str(stop_loss)
                 params["slTriggerBy"] = "LastPrice"
                 params["tpslMode"] = "Full"
+                params["slOrderType"] = "Market"
+
+            # Log the parameters being sent
+            if self.logger:
+                self.logger.debug(f"Order parameters: {params}")
 
             response = self._retry_api_call(
                 self.client.place_order,
                 **params
             )
+
+            # Log the response
+            if self.logger:
+                self.logger.debug(f"Order response: {response}")
 
             return self._handle_response(response, "place_market_order")
 
@@ -852,6 +1272,10 @@ class BybitAPIClient:
             self.logger.info(f"Setting leverage to {leverage}x for {symbol}")
 
         try:
+            # Log the parameters being sent
+            if self.logger:
+                self.logger.debug(f"Setting leverage parameters: symbol={symbol}, leverage={leverage}")
+
             response = self._retry_api_call(
                 self.client.set_leverage,
                 category="linear",
@@ -860,8 +1284,19 @@ class BybitAPIClient:
                 sellLeverage=str(leverage)
             )
 
+            # Log the response
+            if self.logger:
+                self.logger.debug(f"Set leverage response: {response}")
+
             result = self._handle_response(response, "set_leverage")
-            return result is not None
+            if result is not None:
+                if self.logger:
+                    self.logger.info(f"Successfully set leverage to {leverage}x for {symbol}")
+                return True
+            else:
+                if self.logger:
+                    self.logger.error(f"Failed to set leverage for {symbol}")
+                return False
 
         except Exception as e:
             self._log_error(e, "Failed to set leverage")
@@ -888,14 +1323,29 @@ class BybitAPIClient:
             self.logger.info(f"Cancelling all orders for {symbol}")
 
         try:
+            # Log the parameters being sent
+            if self.logger:
+                self.logger.debug(f"Cancel all orders parameters: category=linear, symbol={symbol}")
+
             response = self._retry_api_call(
                 self.client.cancel_all_orders,
                 category="linear",
                 symbol=symbol
             )
 
+            # Log the response
+            if self.logger:
+                self.logger.debug(f"Cancel all orders response: {response}")
+
             result = self._handle_response(response, "cancel_all_orders")
-            return result is not None
+            if result is not None:
+                if self.logger:
+                    self.logger.info(f"Successfully cancelled all orders for {symbol}")
+                return True
+            else:
+                if self.logger:
+                    self.logger.error(f"Failed to cancel all orders for {symbol}")
+                return False
 
         except Exception as e:
             self._log_error(e, "Failed to cancel all orders")
@@ -930,25 +1380,44 @@ class BybitAPIClient:
             if size == 0:
                 continue
 
+            # Determine the opposite side for closing
             side = "Sell" if position.get("side") == "Buy" else "Buy"
 
             if self.logger:
                 self.logger.info(f"Closing {position.get('side')} position for {symbol} with size {size}")
 
             try:
+                # Log the parameters being sent
+                params = {
+                    "category": "linear",
+                    "symbol": symbol,
+                    "side": side,
+                    "orderType": "Market",
+                    "qty": str(abs(size)),
+                    "reduceOnly": True,
+                    "positionIdx": 0  # 0 for one-way mode
+                }
+
+                if self.logger:
+                    self.logger.debug(f"Close position parameters: {params}")
+
                 response = self._retry_api_call(
                     self.client.place_order,
-                    category="linear",
-                    symbol=symbol,
-                    side=side,
-                    orderType="Market",
-                    qty=str(abs(size)),
-                    reduceOnly=True
+                    **params
                 )
+
+                # Log the response
+                if self.logger:
+                    self.logger.debug(f"Close position response: {response}")
 
                 result = self._handle_response(response, "close_position")
                 if not result:
+                    if self.logger:
+                        self.logger.error(f"Failed to close {position.get('side')} position for {symbol}")
                     return False
+                else:
+                    if self.logger:
+                        self.logger.info(f"Successfully closed {position.get('side')} position for {symbol}")
 
             except Exception as e:
                 self._log_error(e, "Failed to close position")
@@ -969,12 +1438,16 @@ class BybitAPIClient:
             return True
 
         try:
+            # Log the parameters being used
+            if self.logger:
+                self.logger.debug(f"Starting WebSocket with parameters: testnet=False, domain=bybit, channel_type=linear")
+
             # Initialize WebSocket client with V5 API
             self.ws_client = WebSocket(
                 testnet=False,  # Always use mainnet
                 api_key=self.api_key,
                 api_secret=self.api_secret,
-                domain="unified",     # Use unified for V5 API
+                domain="bybit",       # Use bybit for V5 API (not unified)
                 channel_type="linear" # linear for USDT perpetual
             )
 
@@ -987,6 +1460,8 @@ class BybitAPIClient:
             return True
         except Exception as e:
             self._log_error(e, "Failed to start WebSocket")
+            if self.logger:
+                self.logger.error(f"WebSocket initialization parameters: testnet=False, domain=bybit, channel_type=linear")
             return False
 
     def stop_websocket(self):
@@ -1007,8 +1482,20 @@ class BybitAPIClient:
                 self.unsubscribe_topic(topic)
 
             # Close WebSocket connection
+            try:
+                # Try to close the WebSocket connection if the client has a close method
+                if hasattr(self.ws_client, 'close') and callable(getattr(self.ws_client, 'close')):
+                    self.ws_client.close()
+            except Exception as e:
+                if self.logger:
+                    self.logger.warning(f"Error closing WebSocket connection: {e}")
+
+            # Clear references
             self.ws_client = None
             self.ws_enabled = False
+            self.ws_callbacks = {}
+            with self.ws_lock:
+                self.ws_data = {}
 
             if self.logger:
                 self.logger.info("WebSocket stopped successfully")
@@ -1025,6 +1512,10 @@ class BybitAPIClient:
         Args:
             message (dict): WebSocket message.
         """
+        # Check if WebSocket is still enabled
+        if not self.ws_enabled or self.ws_client is None:
+            return
+
         try:
             # Parse message
             if not isinstance(message, dict):
@@ -1035,9 +1526,28 @@ class BybitAPIClient:
             if not topic:
                 return
 
+            # Check if we're still subscribed to this topic
+            if topic not in self.ws_callbacks:
+                # If we receive a message for a topic we're not tracking, but it's a valid topic format,
+                # add it to our tracking to avoid subscription errors in the future
+                if topic.startswith("kline.") or topic.startswith("tickers."):
+                    if self.logger:
+                        self.logger.debug(f"Received message for untracked topic {topic}, adding to tracking")
+                    self.ws_callbacks[topic] = None
+                else:
+                    return
+
+            # Log the received message for debugging
+            if self.logger:
+                self.logger.debug(f"Received WebSocket message for topic {topic}")
+
             # Store data
             with self.ws_lock:
                 self.ws_data[topic] = message
+
+            # Process kline data for MACD calculation if it's a kline topic
+            if topic.startswith("kline."):
+                self.calculate_macd_callback(topic, message)
 
             # Call callback function if registered
             if topic in self.ws_callbacks and callable(self.ws_callbacks[topic]):
@@ -1045,6 +1555,262 @@ class BybitAPIClient:
 
         except Exception as e:
             self._log_error(e, "WebSocket callback error")
+            if self.logger:
+                self.logger.error(f"Error processing WebSocket message: {message if 'message' in locals() else 'Unknown message'}")
+
+    def calculate_macd_callback(self, topic, message):
+        """
+        Calculate MACD for real-time kline data received from WebSocket.
+        Uses optimized calculation and caching for better performance.
+
+        Args:
+            topic (str): WebSocket topic.
+            message (dict): WebSocket message.
+        """
+        try:
+            # Extract symbol and interval from topic
+            # Topic format: kline.{interval}.{symbol}
+            parts = topic.split('.')
+            if len(parts) != 3:
+                if self.logger:
+                    self.logger.warning(f"Invalid kline topic format: {topic}")
+                return
+
+            interval = parts[1]
+            symbol = parts[2]
+
+            # Create a unique key for this symbol and interval
+            macd_key = f"{symbol}_{interval}"
+
+            # Check if we need to recalculate MACD based on cache TTL
+            current_time = int(time.time())
+            last_update_time = self.macd_last_update.get(macd_key, 0)
+            cache_valid = (current_time - last_update_time) < self.macd_cache_ttl
+
+            # If cache is still valid, skip calculation
+            if cache_valid and macd_key in self.macd_data and self.macd_data[macd_key] is not None:
+                if self.logger:
+                    self.logger.debug(f"Using cached MACD data for {symbol} ({interval}), last updated {current_time - last_update_time}s ago")
+                return
+
+            # Get kline data from message
+            kline_data = message.get("data", {})
+            if not kline_data:
+                if self.logger:
+                    self.logger.warning("Empty kline data received from WebSocket")
+                return
+
+            # Check if kline_data is a list (new format) or a dict (old format)
+            if isinstance(kline_data, list) and len(kline_data) > 0:
+                kline_data = kline_data[0]  # Take the first item if it's a list
+
+            if not isinstance(kline_data, dict):
+                if self.logger:
+                    self.logger.warning(f"Unexpected kline data format: {type(kline_data)}")
+                return
+
+            # Use incremental update for better performance
+            updated_df = self.update_macd_with_new_data(symbol, interval)
+
+            if updated_df is None or updated_df.empty:
+                if self.logger:
+                    self.logger.warning("Failed to update MACD incrementally, falling back to full calculation")
+
+                # Fall back to full calculation
+                historical_df = self.get_klines(symbol, interval)
+                if historical_df is None or historical_df.empty:
+                    if self.logger:
+                        self.logger.warning("Failed to get historical data for MACD calculation")
+                    return
+
+                # Calculate MACD for historical data using optimized method
+                historical_df = self.calculate_macd(historical_df, force_recalculate=True)
+
+                # Store the calculated MACD data and update timestamp
+                self.macd_data[macd_key] = historical_df
+                self.macd_last_update[macd_key] = current_time
+
+            if self.logger:
+                self.logger.debug(f"MACD calculated for {symbol} ({interval}) after receiving new data")
+
+        except Exception as e:
+            self._log_error(e, "Failed to calculate MACD from WebSocket data")
+
+    def get_macd_data(self, symbol=None, interval=None, force_recalculate=False):
+        """
+        Get pre-calculated MACD data for the given symbol and interval.
+        Uses caching for better performance.
+
+        Args:
+            symbol (str, optional): Trading symbol. Defaults to config.SYMBOL.
+            interval (str, optional): Kline interval. Defaults to config.TIMEFRAME.
+            force_recalculate (bool, optional): Force recalculation even if cached data exists. Defaults to False.
+
+        Returns:
+            pandas.DataFrame: DataFrame with MACD data or None if not available.
+        """
+        symbol = symbol or config.SYMBOL
+        interval = interval or config.TIMEFRAME
+
+        macd_key = f"{symbol}_{interval}"
+        current_time = int(time.time())
+
+        # Check if we have valid cached data
+        cache_valid = False
+        if macd_key in self.macd_data and self.macd_data[macd_key] is not None and not self.macd_data[macd_key].empty:
+            last_update_time = self.macd_last_update.get(macd_key, 0)
+            cache_valid = (current_time - last_update_time) < self.macd_cache_ttl
+
+        # Return cached data if valid and not forcing recalculation
+        if cache_valid and not force_recalculate:
+            if self.logger:
+                self.logger.debug(f"Returning cached MACD data for {symbol} ({interval}), last updated {current_time - self.macd_last_update[macd_key]}s ago")
+            return self.macd_data[macd_key]
+        else:
+            if self.logger:
+                if force_recalculate:
+                    self.logger.debug(f"Forcing recalculation of MACD data for {symbol} ({interval})")
+                else:
+                    self.logger.debug(f"No valid cached MACD data available for {symbol} ({interval}), calculating now")
+
+            # Calculate minimum required data points for MACD calculation
+            min_periods = max(self.macd_slow, self.macd_fast, self.macd_signal)
+            # Add buffer to ensure we have enough data (3x the minimum required)
+            min_required = min_periods * 3
+
+            # Get historical data and calculate MACD with enough data for MACD calculation
+            historical_df = self.get_klines(symbol, interval, limit=min_required)
+            if historical_df is None or historical_df.empty:
+                if self.logger:
+                    self.logger.warning(f"Failed to get historical data for {symbol} ({interval})")
+                return None
+
+            # Check if we have enough data
+            if len(historical_df) < min_periods:
+                if self.logger:
+                    self.logger.warning(f"Not enough historical data for MACD calculation. Need at least {min_periods} rows, got {len(historical_df)}.")
+                    self.logger.warning(f"This may be due to insufficient historical data available for the selected timeframe.")
+                    self.logger.warning(f"Try using a shorter timeframe or waiting for more data to accumulate.")
+
+            # Calculate MACD for historical data using optimized method
+            historical_df = self.calculate_macd(historical_df, force_recalculate=force_recalculate)
+
+            # Store the calculated MACD data and update timestamp
+            self.macd_data[macd_key] = historical_df
+            self.macd_last_update[macd_key] = current_time
+
+            if self.logger:
+                self.logger.debug(f"MACD calculation completed for {symbol} ({interval})")
+
+            return historical_df
+
+    def update_macd_with_new_data(self, symbol=None, interval=None, new_candle=None):
+        """
+        Update MACD calculation with new candle data without recalculating the entire dataset.
+        This is an optimized method for incremental updates.
+
+        Args:
+            symbol (str, optional): Trading symbol. Defaults to config.SYMBOL.
+            interval (str, optional): Kline interval. Defaults to config.TIMEFRAME.
+            new_candle (dict, optional): New candle data. If None, will get the latest candle from WebSocket.
+
+        Returns:
+            pandas.DataFrame: Updated DataFrame with MACD data or None if update failed.
+        """
+        symbol = symbol or config.SYMBOL
+        interval = interval or config.TIMEFRAME
+        macd_key = f"{symbol}_{interval}"
+
+        # Check if we have existing MACD data
+        if macd_key not in self.macd_data or self.macd_data[macd_key] is None or self.macd_data[macd_key].empty:
+            if self.logger:
+                self.logger.debug(f"No existing MACD data for {symbol} ({interval}), calculating from scratch")
+            return self.get_macd_data(symbol, interval, force_recalculate=True)
+
+        try:
+            # Get existing data
+            df = self.macd_data[macd_key].copy()
+
+            # If no new candle provided, try to get it from WebSocket
+            if new_candle is None:
+                topic = f"kline.{interval}.{symbol}"
+                with self.ws_lock:
+                    data = self.ws_data.get(topic)
+
+                if not data or not data.get("data"):
+                    if self.logger:
+                        self.logger.warning(f"No real-time data available for {symbol} ({interval})")
+                    return df
+
+                kline_data = data.get("data", {})
+                if isinstance(kline_data, list) and len(kline_data) > 0:
+                    kline_data = kline_data[0]
+
+                if not isinstance(kline_data, dict):
+                    if self.logger:
+                        self.logger.warning(f"Unexpected kline data format: {type(kline_data)}")
+                    return df
+
+                # Create new candle data
+                new_candle = {
+                    "timestamp": pd.to_datetime(int(kline_data.get("start", 0)), unit="ms"),
+                    "open": float(kline_data.get("open", 0)),
+                    "high": float(kline_data.get("high", 0)),
+                    "low": float(kline_data.get("low", 0)),
+                    "close": float(kline_data.get("close", 0)),
+                    "volume": float(kline_data.get("volume", 0)),
+                    "turnover": float(kline_data.get("turnover", 0)),
+                    "confirm": kline_data.get("confirm", "1") == "1"
+                }
+
+            # Check if the new candle is already in our data
+            new_timestamp = new_candle["timestamp"] if isinstance(new_candle["timestamp"], pd.Timestamp) else pd.to_datetime(new_candle["timestamp"])
+
+            # Find if we already have this candle
+            existing_idx = df[df["timestamp"] == new_timestamp].index
+
+            if len(existing_idx) > 0:
+                # Update existing candle
+                idx = existing_idx[0]
+                for key, value in new_candle.items():
+                    if key in df.columns:
+                        df.at[idx, key] = value
+            else:
+                # Append new candle
+                new_row = pd.DataFrame([new_candle])
+                df = pd.concat([df, new_row]).reset_index(drop=True)
+
+            # Calculate MACD only for the new/updated candle
+            # We need some history for accurate calculation, so we'll use the last N candles
+            min_periods = max(self.macd_slow, self.macd_fast, self.macd_signal)
+            history_size = max(min_periods * 3, 50)  # Use at least 3x minimum required or 50 candles
+            start_idx = max(0, len(df) - history_size)
+
+            # Check if we have enough data
+            if len(df) < min_periods:
+                if self.logger:
+                    self.logger.warning(f"Not enough data for incremental MACD update. Need at least {min_periods} rows, got {len(df)}.")
+                    self.logger.warning(f"Falling back to full MACD calculation.")
+                return self.get_macd_data(symbol, interval, force_recalculate=True)
+
+            # Calculate MACD for the subset
+            df = self.calculate_macd(df, start_idx=start_idx, end_idx=len(df), force_recalculate=True)
+
+            # Update stored data and timestamp
+            self.macd_data[macd_key] = df
+            self.macd_last_update[macd_key] = int(time.time())
+
+            if self.logger:
+                self.logger.debug(f"MACD incrementally updated for {symbol} ({interval})")
+
+            return df
+
+        except Exception as e:
+            self._log_error(e, f"Failed to update MACD incrementally for {symbol} ({interval})")
+            # Fall back to full recalculation
+            if self.logger:
+                self.logger.warning(f"Falling back to full MACD recalculation for {symbol} ({interval})")
+            return self.get_macd_data(symbol, interval, force_recalculate=True)
 
     def subscribe_kline(self, symbol=None, interval=None, callback=None):
         """
@@ -1070,9 +1836,36 @@ class BybitAPIClient:
             # Format topic
             topic = f"kline.{interval}.{symbol}"
 
+            # Check if already subscribed
+            if topic in self.ws_callbacks:
+                if self.logger:
+                    self.logger.debug(f"Already subscribed to {topic}")
+                return True
+
+            # Check if PyBit already has this subscription
+            # This is a workaround for PyBit not providing a way to check subscriptions
+            try:
+                # Try to get the callback directory from PyBit
+                if hasattr(self.ws_client, '_callback_directory'):
+                    callback_directory = self.ws_client._callback_directory
+                    if topic in callback_directory:
+                        if self.logger:
+                            self.logger.debug(f"PyBit already subscribed to {topic}")
+                        # Add to our local tracking
+                        self.ws_callbacks[topic] = None
+                        return True
+            except Exception as e:
+                # Ignore errors in this check
+                if self.logger:
+                    self.logger.debug(f"Error checking PyBit subscriptions: {e}")
+
             # Register callback
             if callback is not None and callable(callback):
                 self.ws_callbacks[topic] = callback
+
+            # Log the parameters being sent
+            if self.logger:
+                self.logger.debug(f"Subscribing to kline stream with parameters: interval={interval}, symbol={symbol}")
 
             # Subscribe to topic
             self.ws_client.kline_stream(
@@ -1087,6 +1880,8 @@ class BybitAPIClient:
             return True
         except Exception as e:
             self._log_error(e, "Failed to subscribe to kline data")
+            if self.logger:
+                self.logger.debug(f"Subscription parameters: interval={interval}, symbol={symbol}")
             return False
 
     def subscribe_ticker(self, symbol=None, callback=None):
@@ -1111,9 +1906,36 @@ class BybitAPIClient:
             # Format topic
             topic = f"tickers.{symbol}"
 
+            # Check if already subscribed
+            if topic in self.ws_callbacks:
+                if self.logger:
+                    self.logger.debug(f"Already subscribed to {topic}")
+                return True
+
+            # Check if PyBit already has this subscription
+            # This is a workaround for PyBit not providing a way to check subscriptions
+            try:
+                # Try to get the callback directory from PyBit
+                if hasattr(self.ws_client, '_callback_directory'):
+                    callback_directory = self.ws_client._callback_directory
+                    if topic in callback_directory:
+                        if self.logger:
+                            self.logger.debug(f"PyBit already subscribed to {topic}")
+                        # Add to our local tracking
+                        self.ws_callbacks[topic] = None
+                        return True
+            except Exception as e:
+                # Ignore errors in this check
+                if self.logger:
+                    self.logger.debug(f"Error checking PyBit subscriptions: {e}")
+
             # Register callback
             if callback is not None and callable(callback):
                 self.ws_callbacks[topic] = callback
+
+            # Log the parameters being sent
+            if self.logger:
+                self.logger.debug(f"Subscribing to ticker stream with parameters: symbol={symbol}")
 
             # Subscribe to topic
             self.ws_client.ticker_stream(
@@ -1145,8 +1967,8 @@ class BybitAPIClient:
             return True
 
         try:
-            # Unsubscribe from topic
-            self.ws_client.unsubscribe(topic)
+            # In PyBit V5 API, we can't directly unsubscribe from a topic
+            # So we just remove our local references to it
 
             # Remove callback
             if topic in self.ws_callbacks:
@@ -1193,14 +2015,46 @@ class BybitAPIClient:
         # Format topic
         topic = f"kline.{interval}.{symbol}"
 
+        # Check if we're subscribed to this topic
+        # In PyBit V5 API, we can't directly check if we're subscribed to a topic
+        # So we use our local ws_callbacks dictionary to track subscriptions
+        is_subscribed = topic in self.ws_callbacks
+
         # Subscribe if not subscribed
-        if topic not in self.ws_callbacks:
+        if not is_subscribed:
             if self.logger:
                 self.logger.debug(f"Not subscribed to {topic}, attempting to subscribe")
-            if not self.subscribe_kline(symbol, interval):
-                if self.logger:
-                    self.logger.warning("Failed to subscribe to kline data, falling back to REST API")
-                return self.get_klines(symbol, interval)
+            try:
+                # Check if PyBit already has this subscription
+                # This is a workaround for PyBit not providing a way to check subscriptions
+                if hasattr(self.ws_client, '_callback_directory'):
+                    callback_directory = self.ws_client._callback_directory
+                    if topic in callback_directory:
+                        if self.logger:
+                            self.logger.debug(f"PyBit already subscribed to {topic}, adding to local tracking")
+                        # Add to our local tracking
+                        self.ws_callbacks[topic] = None
+                        is_subscribed = True
+
+                # Only try to subscribe if we're not already subscribed
+                if not is_subscribed:
+                    if not self.subscribe_kline(symbol, interval):
+                        if self.logger:
+                            self.logger.warning("Failed to subscribe to kline data, falling back to REST API")
+                        return self.get_klines(symbol, interval)
+            except Exception as e:
+                # If we get an error about already being subscribed, just continue
+                if "You have already subscribed to this topic" in str(e):
+                    if self.logger:
+                        self.logger.debug(f"Already subscribed to {topic} (from exception)")
+                    # Add to our local tracking
+                    self.ws_callbacks[topic] = None
+                else:
+                    # For other errors, log and return None
+                    self._log_error(e, f"Failed to subscribe to kline data for {symbol} ({interval})")
+                    if self.logger:
+                        self.logger.warning("Falling back to REST API after subscription error")
+                    return self.get_klines(symbol, interval)
 
         # Get data from WebSocket
         with self.ws_lock:
@@ -1220,21 +2074,39 @@ class BybitAPIClient:
                     self.logger.warning("Empty kline data received from WebSocket, falling back to REST API")
                 return self.get_klines(symbol, interval)
 
+            # Check if kline_data is a list (new format) or a dict (old format)
+            if isinstance(kline_data, list) and len(kline_data) > 0:
+                kline_data = kline_data[0]  # Take the first item if it's a list
+
+            if not isinstance(kline_data, dict):
+                if self.logger:
+                    self.logger.warning(f"Unexpected kline data format: {type(kline_data)}, falling back to REST API")
+                return self.get_klines(symbol, interval)
+
             if self.logger:
                 self.logger.debug(f"Received WebSocket data for {symbol} ({interval}): {kline_data}")
 
             # Create DataFrame for the real-time candle
             try:
-                df = pd.DataFrame([{
+                # Create a dictionary with the data
+                candle_data = {
                     "timestamp": pd.to_datetime(int(kline_data.get("start", 0)), unit="ms"),
                     "open": float(kline_data.get("open", 0)),
                     "high": float(kline_data.get("high", 0)),
                     "low": float(kline_data.get("low", 0)),
                     "close": float(kline_data.get("close", 0)),
                     "volume": float(kline_data.get("volume", 0)),
-                    "turnover": float(kline_data.get("turnover", 0)),
-                    "confirm": kline_data.get("confirm", "1") == "1"
-                }])
+                    "turnover": float(kline_data.get("turnover", 0))
+                }
+
+                # Add confirm column with default value True if not present in the data
+                if "confirm" in kline_data:
+                    candle_data["confirm"] = kline_data.get("confirm", "1") == "1"
+                else:
+                    candle_data["confirm"] = True
+
+                # Create DataFrame
+                df = pd.DataFrame([candle_data])
             except (ValueError, TypeError) as e:
                 if self.logger:
                     self.logger.error(f"Error creating DataFrame from WebSocket data: {e}")
@@ -1242,11 +2114,20 @@ class BybitAPIClient:
                 return self.get_klines(symbol, interval)
 
             # Get historical data to combine with real-time data
-            historical_df = self.get_klines(symbol, interval)
+            # Use get_macd_data method which handles caching and calculation
+            historical_df = self.get_macd_data(symbol, interval)
             if historical_df is None or historical_df.empty:
                 if self.logger:
-                    self.logger.warning("Failed to get historical data to combine with real-time data")
-                return df  # Return just the real-time candle if we can't get historical data
+                    self.logger.warning("Failed to get historical data with MACD to combine with real-time data")
+                # Try to get just the historical data without MACD
+                historical_df = self.get_klines(symbol, interval)
+                if historical_df is None or historical_df.empty:
+                    if self.logger:
+                        self.logger.warning("Failed to get any historical data to combine with real-time data")
+                    return df  # Return just the real-time candle if we can't get historical data
+
+                # Calculate MACD for the real-time candle
+                df = self.calculate_macd(df)
 
             # Remove the last candle from historical data if it's the same as real-time data
             try:

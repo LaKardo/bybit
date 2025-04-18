@@ -120,3 +120,50 @@ def is_invalid_api_key(api_key, api_secret):
         return True
 
     return False
+
+
+def convert_timeframe(timeframe, from_format='bybit_v5', to_format='human'):
+    """
+    Convert timeframe between different formats.
+
+    Args:
+        timeframe (str): Timeframe to convert.
+        from_format (str): Source format ('bybit_v5', 'human', 'ccxt').
+        to_format (str): Target format ('bybit_v5', 'human', 'ccxt').
+
+    Returns:
+        str: Converted timeframe.
+    """
+    # Mapping between formats
+    # bybit_v5: Bybit API V5 format (1, 3, 5, 15, 30, 60, 120, 240, 360, 720, D, W, M)
+    # human: Human-readable format (1m, 3m, 5m, 15m, 30m, 1h, 2h, 4h, 6h, 12h, 1d, 1w, 1M)
+    # ccxt: CCXT library format (1m, 3m, 5m, 15m, 30m, 1h, 2h, 4h, 6h, 12h, 1d, 1w, 1M)
+
+    # Define mappings
+    bybit_v5_to_human = {
+        '1': '1m', '3': '3m', '5': '5m', '15': '15m', '30': '30m',
+        '60': '1h', '120': '2h', '240': '4h', '360': '6h', '720': '12h',
+        'D': '1d', 'W': '1w', 'M': '1M'
+    }
+
+    human_to_bybit_v5 = {v: k for k, v in bybit_v5_to_human.items()}
+
+    # CCXT format is the same as human-readable format
+    ccxt_to_human = {k: k for k in bybit_v5_to_human.values()}
+    human_to_ccxt = {v: v for v in bybit_v5_to_human.values()}
+
+    # Convert from source format to human format (intermediate step)
+    if from_format == 'bybit_v5':
+        human_tf = bybit_v5_to_human.get(timeframe, timeframe)
+    elif from_format == 'ccxt':
+        human_tf = ccxt_to_human.get(timeframe, timeframe)
+    else:  # human format
+        human_tf = timeframe
+
+    # Convert from human format to target format
+    if to_format == 'bybit_v5':
+        return human_to_bybit_v5.get(human_tf, human_tf)
+    elif to_format == 'ccxt':
+        return human_to_ccxt.get(human_tf, human_tf)
+    else:  # human format
+        return human_tf

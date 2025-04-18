@@ -1,0 +1,49 @@
+2025-04-18 14:41:12,959 - root - WARNING - Bot instance not available. Running in demo mode.
+2025-04-18 14:41:12,961 - root - WARNING - Bot instance not available. Running in demo mode.
+2025-04-18 14:41:13,130 - waitress - INFO - Serving on http://0.0.0.0:5000
+2025-04-18 14:41:17,491 - root - INFO - Client connected
+2025-04-18 14:41:17,793 - waitress - ERROR - Exception while serving /socket.io/
+Traceback (most recent call last):
+  File "C:\Users\Admin\AppData\Roaming\Python\Python313\site-packages\waitress\channel.py", line 430, in service
+    task.service()
+    ~~~~~~~~~~~~^^
+  File "C:\Users\Admin\AppData\Roaming\Python\Python313\site-packages\waitress\task.py", line 167, in service
+    self.execute()
+    ~~~~~~~~~~~~^^
+  File "C:\Users\Admin\AppData\Roaming\Python\Python313\site-packages\waitress\task.py", line 435, in execute
+    app_iter = self.channel.server.application(environ, start_response)
+  File "C:\Users\Admin\AppData\Roaming\Python\Python313\site-packages\waitress\proxy_headers.py", line 64, in translate_proxy_headers
+    return app(environ, start_response)
+  File "C:\Users\Admin\AppData\Roaming\Python\Python313\site-packages\flask\app.py", line 1536, in __call__
+    return self.wsgi_app(environ, start_response)
+           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Roaming\Python\Python313\site-packages\flask_socketio\__init__.py", line 42, in __call__
+    return super().__call__(environ, start_response)
+           ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Roaming\Python\Python313\site-packages\engineio\middleware.py", line 63, in __call__
+    return self.engineio_app.handle_request(environ, start_response)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Roaming\Python\Python313\site-packages\socketio\server.py", line 434, in handle_request
+    return self.eio.handle_request(environ, start_response)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Roaming\Python\Python313\site-packages\engineio\server.py", line 286, in handle_request
+    packets = socket.handle_get_request(
+        environ, start_response)
+  File "C:\Users\Admin\AppData\Roaming\Python\Python313\site-packages\engineio\socket.py", line 92, in handle_get_request
+    return getattr(self, '_upgrade_' + transport)(environ,
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+                                                  start_response)
+                                                  ^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Roaming\Python\Python313\site-packages\engineio\socket.py", line 151, in _upgrade_websocket
+    return ws(environ, start_response)
+  File "C:\Users\Admin\AppData\Roaming\Python\Python313\site-packages\engineio\async_drivers\_websocket_wsgi.py", line 14, in __call__
+    self.ws = simple_websocket.Server(environ, **self.server_args)
+              ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Admin\AppData\Roaming\Python\Python313\site-packages\simple_websocket\ws.py", line 290, in __init__
+    raise RuntimeError('Cannot obtain socket from WSGI environment.')
+RuntimeError: Cannot obtain socket from WSGI environment.
+2025-04-18 14:41:39,077 - waitress - WARNING - 1 thread(s) still running
+2025-04-18 14:46:45,812 - root - WARNING - Bot instance not available. Running in demo mode.
+2025-04-18 14:46:45,814 - root - WARNING - Bot instance not available. Running in demo mode.
+2025-04-18 14:46:49,473 - root - INFO - Client connected
+2025-04-18 14:47:59,475 - root - INFO - Client disconnected

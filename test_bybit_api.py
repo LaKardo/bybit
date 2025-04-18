@@ -54,44 +54,69 @@ def test_get_klines(client):
 
         print(f"Start time: {start_time}, End time: {end_time}")
 
+        # Prepare parameters
+        params = {
+            "category": "linear",
+            "symbol": config.SYMBOL,
+            "interval": config.TIMEFRAME,
+            "start": start_time,
+            "end": end_time,
+            "limit": 100
+        }
+
+        print(f"Request parameters: {params}")
+
         # Get klines
-        response = client.get_kline(
-            category="linear",
-            symbol=config.SYMBOL,
-            interval=config.TIMEFRAME,
-            start=start_time,
-            end=end_time,
-            limit=100
-        )
+        response = client.get_kline(**params)
 
         # Check response
         if response.get("retCode") == 0:
             print("API call successful")
-            print(f"Full response: {response}")
+            print(f"Response code: {response.get('retCode')}")
+            print(f"Response message: {response.get('retMsg')}")
             result = response.get("result")
 
             if not result or "list" not in result:
                 print("No data in response")
                 return
 
-            # Convert to DataFrame
-            df = pd.DataFrame(result["list"], columns=[
-                "timestamp", "open", "high", "low", "close", "volume",
-                "turnover", "confirm"
-            ])
+            # Convert to DataFrame - check the number of columns in the response
+            klines_data = result["list"]
+            if len(klines_data) > 0 and len(klines_data[0]) == 7:
+                # V5 API returns 7 columns: timestamp, open, high, low, close, volume, turnover
+                df = pd.DataFrame(klines_data, columns=[
+                    "timestamp", "open", "high", "low", "close", "volume", "turnover"
+                ])
+                # Add confirm column with default value True
+                df["confirm"] = True
+            else:
+                # Fallback to original 8 columns format
+                df = pd.DataFrame(klines_data, columns=[
+                    "timestamp", "open", "high", "low", "close", "volume", "turnover", "confirm"
+                ])
 
             # Print data summary
             print(f"Received {len(df)} klines")
 
             if len(df) > 0:
-                print(f"First timestamp: {pd.to_datetime(int(df.iloc[0]['timestamp']), unit='ms')}")
-                print(f"Last timestamp: {pd.to_datetime(int(df.iloc[-1]['timestamp']), unit='ms')}")
+                # Convert timestamp to datetime for display
+                try:
+                    first_time = pd.to_datetime(int(df.iloc[0]['timestamp']), unit='ms')
+                    last_time = pd.to_datetime(int(df.iloc[-1]['timestamp']), unit='ms')
+                    print(f"First timestamp: {first_time}")
+                    print(f"Last timestamp: {last_time}")
+                except Exception as e:
+                    print(f"Error converting timestamps: {e}")
 
                 # Print first few rows
                 print("\nFirst 3 rows:")
                 for i in range(min(3, len(df))):
-                    row = df.iloc[i]
-                    print(f"Time: {pd.to_datetime(int(row['timestamp']), unit='ms')}, Open: {row['open']}, Close: {row['close']}")
+                    try:
+                        row = df.iloc[i]
+                        time_str = pd.to_datetime(int(row['timestamp']), unit='ms')
+                        print(f"Time: {time_str}, Open: {row['open']}, High: {row['high']}, Low: {row['low']}, Close: {row['close']}, Volume: {row['volume']}")
+                    except Exception as e:
+                        print(f"Error displaying row {i}: {e}")
             else:
                 print("No data points received from API. Empty response.")
         else:
@@ -107,7 +132,7 @@ def test_alternative_timeframes(client):
         print("Cannot test alternative timeframes: No client connection")
         return
 
-    timeframes = ["5m", "15m", "30m", "1h", "4h", "1d"]
+    timeframes = ["5", "15", "30", "60", "240", "D"]  # Updated to match V5 API format
 
     print("\nTesting alternative timeframes")
 
@@ -119,27 +144,41 @@ def test_alternative_timeframes(client):
     for tf in timeframes:
         print(f"\nTesting timeframe: {tf}")
         try:
+            # Prepare parameters
+            params = {
+                "category": "linear",
+                "symbol": config.SYMBOL,
+                "interval": tf,
+                "start": start_time,
+                "end": end_time,
+                "limit": 10
+            }
+
+            print(f"Request parameters: {params}")
+
             # Get klines
-            response = client.get_kline(
-                category="linear",
-                symbol=config.SYMBOL,
-                interval=tf,
-                start=start_time,
-                end=end_time,
-                limit=10
-            )
+            response = client.get_kline(**params)
 
             # Check response
             if response.get("retCode") == 0:
                 result = response.get("result")
                 if result and "list" in result:
                     print(f"✓ Successfully fetched {len(result['list'])} klines for {tf}")
+                    # Print first row as sample
+                    if len(result['list']) > 0:
+                        first_row = result['list'][0]
+                        try:
+                            time_str = pd.to_datetime(int(first_row[0]), unit='ms')
+                            print(f"  Sample: Time: {time_str}, Open: {first_row[1]}, Close: {first_row[4]}")
+                        except Exception as e:
+                            print(f"  Error displaying sample: {e}")
                 else:
                     print(f"✗ No data in response for {tf}")
             else:
                 print(f"✗ API call failed for {tf}: {response.get('retMsg')}")
         except Exception as e:
             print(f"✗ Error fetching {tf} klines: {e}")
+            print(f"  Detailed error: {traceback.format_exc()}")
 
 def test_alternative_symbols(client):
     """Test fetching data with different symbols."""
@@ -159,27 +198,42 @@ def test_alternative_symbols(client):
     for symbol in symbols:
         print(f"\nTesting symbol: {symbol}")
         try:
+            # Prepare parameters
+            params = {
+                "category": "linear",
+                "symbol": symbol,
+                "interval": config.TIMEFRAME,
+                "start": start_time,
+                "end": end_time,
+                "limit": 10
+            }
+
+            print(f"Request parameters: {params}")
+
             # Get klines
-            response = client.get_kline(
-                category="linear",
-                symbol=symbol,
-                interval=config.TIMEFRAME,
-                start=start_time,
-                end=end_time,
-                limit=10
-            )
+            response = client.get_kline(**params)
 
             # Check response
             if response.get("retCode") == 0:
                 result = response.get("result")
                 if result and "list" in result:
                     print(f"✓ Successfully fetched {len(result['list'])} klines for {symbol}")
+                    # Print first row as sample
+                    if len(result['list']) > 0:
+                        first_row = result['list'][0]
+                        try:
+                            time_str = pd.to_datetime(int(first_row[0]), unit='ms')
+                            print(f"  Sample: Time: {time_str}, Open: {first_row[1]}, Close: {first_row[4]}")
+                        except Exception as e:
+                            print(f"  Error displaying sample: {e}")
                 else:
                     print(f"✗ No data in response for {symbol}")
             else:
                 print(f"✗ API call failed for {symbol}: {response.get('retMsg')}")
+                print(f"  Response: {response}")
         except Exception as e:
             print(f"✗ Error fetching {symbol} klines: {e}")
+            print(f"  Detailed error: {traceback.format_exc()}")
 
 if __name__ == "__main__":
     print("=" * 50)

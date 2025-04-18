@@ -1,0 +1,78 @@
+2025-04-18 14:35:43,515 - root - WARNING - Bot instance not available. Running in demo mode.
+2025-04-18 14:35:43,534 - root - WARNING - Bot instance not available. Running in demo mode.
+2025-04-18 14:35:43,580 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.1.113:5000
+2025-04-18 14:35:43,582 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-04-18 14:35:43,582 - werkzeug - INFO -  * Restarting with stat
+2025-04-18 14:35:45,834 - root - WARNING - Bot instance not available. Running in demo mode.
+2025-04-18 14:35:45,835 - root - WARNING - Bot instance not available. Running in demo mode.
+2025-04-18 14:35:45,863 - werkzeug - WARNING -  * Debugger is active!
+2025-04-18 14:35:45,867 - werkzeug - INFO -  * Debugger PIN: 466-762-056
+2025-04-18 14:36:10,473 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:36:10] "[32mGET / HTTP/1.1[0m" 302 -
+2025-04-18 14:36:10,551 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:36:10] "GET /login?next=/ HTTP/1.1" 200 -
+2025-04-18 14:36:10,825 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:36:10] "GET /static/css/style.css HTTP/1.1" 200 -
+2025-04-18 14:36:10,950 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:36:10] "GET /static/css/modern-style.css HTTP/1.1" 200 -
+2025-04-18 14:36:10,960 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:36:10] "GET /static/css/chart-styles.css HTTP/1.1" 200 -
+2025-04-18 14:36:10,961 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:36:10] "GET /static/js/micro-interactions.js HTTP/1.1" 200 -
+2025-04-18 14:36:10,963 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:36:10] "GET /static/css/visual-polish.css HTTP/1.1" 200 -
+2025-04-18 14:36:10,963 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:36:10] "GET /static/js/main.js HTTP/1.1" 200 -
+2025-04-18 14:36:11,439 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:36:11] "GET /socket.io/?EIO=4&transport=polling&t=PP8hr1B HTTP/1.1" 200 -
+2025-04-18 14:36:11,704 - root - INFO - Client connected
+2025-04-18 14:36:11,704 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:36:11] "POST /socket.io/?EIO=4&transport=polling&t=PP8hr6s&sid=pT0Tpn2pes2s9C-1AAAA HTTP/1.1" 200 -
+2025-04-18 14:36:11,767 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:36:11] "GET /socket.io/?EIO=4&transport=polling&t=PP8hr6u&sid=pT0Tpn2pes2s9C-1AAAA HTTP/1.1" 200 -
+2025-04-18 14:36:11,778 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:36:11] "GET /socket.io/?EIO=4&transport=polling&t=PP8hrBy&sid=pT0Tpn2pes2s9C-1AAAA HTTP/1.1" 200 -
+2025-04-18 14:38:50,359 - root - WARNING - Bot instance not available. Running in demo mode.
+2025-04-18 14:38:50,361 - root - WARNING - Bot instance not available. Running in demo mode.
+2025-04-18 14:38:50,415 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.1.113:5000
+2025-04-18 14:38:50,416 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-04-18 14:38:50,416 - werkzeug - INFO -  * Restarting with stat
+2025-04-18 14:38:52,886 - root - WARNING - Bot instance not available. Running in demo mode.
+2025-04-18 14:38:52,891 - root - WARNING - Bot instance not available. Running in demo mode.
+2025-04-18 14:38:52,935 - werkzeug - WARNING -  * Debugger is active!
+2025-04-18 14:38:52,940 - werkzeug - INFO -  * Debugger PIN: 466-762-056
+2025-04-18 14:39:07,583 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:39:07] "[32mGET / HTTP/1.1[0m" 302 -
+2025-04-18 14:39:07,628 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:39:07] "GET /login?next=/ HTTP/1.1" 200 -
+2025-04-18 14:39:08,301 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:39:08] "[36mGET /static/css/modern-style.css HTTP/1.1[0m" 304 -
+2025-04-18 14:39:08,347 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:39:08] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2025-04-18 14:39:08,348 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:39:08] "[36mGET /static/css/chart-styles.css HTTP/1.1[0m" 304 -
+2025-04-18 14:39:08,369 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:39:08] "[36mGET /static/js/main.js HTTP/1.1[0m" 304 -
+2025-04-18 14:39:08,384 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:39:08] "[36mGET /static/js/micro-interactions.js HTTP/1.1[0m" 304 -
+2025-04-18 14:39:08,415 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:39:08] "[36mGET /static/css/visual-polish.css HTTP/1.1[0m" 304 -
+2025-04-18 14:39:08,869 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:39:08] "GET /socket.io/?EIO=4&transport=polling&t=PP8iWM8 HTTP/1.1" 200 -
+2025-04-18 14:39:09,137 - root - INFO - Client connected
+2025-04-18 14:39:09,141 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:39:09] "POST /socket.io/?EIO=4&transport=polling&t=PP8iWRE&sid=V7fTmrjfYLCVjsqLAAAA HTTP/1.1" 200 -
+2025-04-18 14:39:09,253 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:39:09] "GET /socket.io/?EIO=4&transport=polling&t=PP8iWRG&sid=V7fTmrjfYLCVjsqLAAAA HTTP/1.1" 200 -
+2025-04-18 14:39:09,310 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:39:09] "GET /socket.io/?EIO=4&transport=polling&t=PP8iWXZ&sid=V7fTmrjfYLCVjsqLAAAA HTTP/1.1" 200 -
+2025-04-18 14:58:28,641 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.1.113:5000
+2025-04-18 14:58:28,641 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-04-18 14:58:28,645 - werkzeug - INFO -  * Restarting with stat
+2025-04-18 14:58:29,135 - werkzeug - WARNING -  * Debugger is active!
+2025-04-18 14:58:29,138 - werkzeug - INFO -  * Debugger PIN: 466-762-056
+2025-04-18 14:58:47,083 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:58:47] "GET /login HTTP/1.1" 200 -
+2025-04-18 14:58:52,024 - root - DEBUG - Login attempt: username=admin, remember=True
+2025-04-18 14:58:52,033 - root - DEBUG - Login successful, redirecting to /
+2025-04-18 14:58:52,038 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:58:52] "[32mPOST /login HTTP/1.1[0m" 302 -
+2025-04-18 14:58:52,067 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:58:52] "GET / HTTP/1.1" 200 -
+2025-04-18 14:58:52,532 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:58:52] "[36mGET /static/css/modern-style.css HTTP/1.1[0m" 304 -
+2025-04-18 14:58:52,533 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:58:52] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+2025-04-18 14:58:52,536 - werkzeug - INFO - 127.0.0.1 - - [18/Apr/2025 14:58:52] "GET /static/css/chart-styles.css HTTP/1.1" 200 -
+2025-04-18 14:59:11,854 - werkzeug - INFO -  * Detected change in 'C:\\Users\\Admin\\Desktop\\боты\\bybit\\simple_web_app.py', reloading
+2025-04-18 14:59:11,922 - werkzeug - INFO -  * Restarting with stat
+2025-04-18 14:59:12,780 - werkzeug - WARNING -  * Debugger is active!
+2025-04-18 14:59:12,784 - werkzeug - INFO -  * Debugger PIN: 466-762-056
+2025-04-18 14:59:23,772 - werkzeug - INFO -  * Detected change in 'C:\\Users\\Admin\\Desktop\\боты\\bybit\\simple_web_app.py', reloading
+2025-04-18 14:59:23,857 - werkzeug - INFO -  * Restarting with stat
+2025-04-18 14:59:24,457 - werkzeug - WARNING -  * Debugger is active!
+2025-04-18 14:59:24,463 - werkzeug - INFO -  * Debugger PIN: 466-762-056
+2025-04-18 14:59:39,377 - werkzeug - INFO -  * Detected change in 'C:\\Users\\Admin\\Desktop\\боты\\bybit\\simple_web_app.py', reloading
+2025-04-18 14:59:39,468 - werkzeug - INFO -  * Restarting with stat
+2025-04-18 14:59:40,087 - werkzeug - WARNING -  * Debugger is active!
+2025-04-18 14:59:40,091 - werkzeug - INFO -  * Debugger PIN: 466-762-056

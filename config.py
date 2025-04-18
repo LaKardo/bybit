@@ -27,7 +27,7 @@ TESTNET = False
 
 # Trading Parameters
 SYMBOL = "BTCUSDT"
-TIMEFRAME = "1h"  # 1h, 4h, 1d, etc.
+TIMEFRAME = "15"  # Bybit API V5 format: 1, 3, 5, 15, 30, 60, 120, 240, 360, 720, D, W, M
 LEVERAGE = 5  # Leverage to use (1-100)
 
 # Strategy Parameters
@@ -60,7 +60,7 @@ DOUBLE_PATTERN_LEVEL_THRESHOLD = 0.03  # Maximum allowed difference between tops
 
 # Multi-Timeframe Analysis Parameters
 MULTI_TIMEFRAME_ENABLED = True  # Whether to use multi-timeframe analysis
-CONFIRMATION_TIMEFRAMES = ["15m", "4h", "1d"]  # Timeframes to use for confirmation (in addition to main timeframe)
+CONFIRMATION_TIMEFRAMES = ["15", "360", "D"]  # Timeframes to use for confirmation (Bybit API V5 format)
 MTF_ALIGNMENT_REQUIRED = 2  # Minimum number of timeframes that must align with the signal (including main timeframe)
 MTF_WEIGHT_MAIN = 1.0  # Weight of the main timeframe
 MTF_WEIGHT_LOWER = 0.7  # Weight of lower timeframes (faster)

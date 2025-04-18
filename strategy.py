@@ -8,20 +8,25 @@ import numpy as np
 import pandas_ta as ta
 import config
 from pattern_recognition import PatternRecognition
+from bybit_client import BybitAPIClient
 
 class Strategy:
     """
     Strategy class for the Bybit Trading Bot.
     Implements the trading strategy using technical indicators.
     """
-    def __init__(self, logger=None):
+    def __init__(self, logger=None, bybit_client=None):
         """
         Initialize the strategy.
 
         Args:
             logger (Logger, optional): Logger instance.
+            bybit_client (BybitAPIClient, optional): Bybit API client instance.
         """
         self.logger = logger
+
+        # Initialize or use provided Bybit client
+        self.bybit_client = bybit_client if bybit_client is not None else BybitAPIClient(logger=logger)
 
         # Strategy parameters
         self.fast_ema = config.FAST_EMA
@@ -97,62 +102,14 @@ class Strategy:
             # Calculate RSI
             df['rsi'] = ta.rsi(df['close'], length=self.rsi_period)
 
-            # Calculate MACD using our own implementation
+            # Calculate MACD using optimized implementation from BybitAPIClient
             try:
-                # Make sure we have enough data for MACD calculation
-                min_periods = max(self.macd_slow, self.macd_fast, self.macd_signal)
-                if len(df) >= min_periods:
-                    # Make sure there are no NaN values in the close price
-                    if not df['close'].isna().any():
-                        # Calculate MACD using our own implementation
-                        try:
-                            # Calculate EMAs for MACD
-                            fast_ema = df['close'].ewm(span=self.macd_fast, adjust=False).mean()
-                            slow_ema = df['close'].ewm(span=self.macd_slow, adjust=False).mean()
+                # Use the optimized MACD calculation from BybitAPIClient
+                df = self.bybit_client.calculate_macd(df)
 
-                            # Calculate MACD line
-                            macd_line = fast_ema - slow_ema
+                if self.logger:
+                    self.logger.debug("MACD calculated successfully using optimized implementation")
 
-                            # Calculate signal line
-                            signal_line = macd_line.ewm(span=self.macd_signal, adjust=False).mean()
-
-                            # Calculate histogram
-                            histogram = macd_line - signal_line
-
-                            # Assign to dataframe
-                            df['macd'] = macd_line
-                            df['macd_signal'] = signal_line
-                            df['macd_hist'] = histogram
-
-                            # Fill any remaining NaN values with 0
-                            df['macd'] = df['macd'].fillna(0.0)
-                            df['macd_signal'] = df['macd_signal'].fillna(0.0)
-                            df['macd_hist'] = df['macd_hist'].fillna(0.0)
-
-                            if self.logger:
-                                self.logger.debug("MACD calculated successfully using custom implementation")
-
-                        except Exception as inner_e:
-                            if self.logger:
-                                self.logger.warning(f"Custom MACD calculation failed: {inner_e}, using default values")
-                            # Use default values
-                            df['macd'] = 0.0
-                            df['macd_signal'] = 0.0
-                            df['macd_hist'] = 0.0
-                    else:
-                        if self.logger:
-                            self.logger.warning("Close price contains NaN values, using default MACD values")
-                        # Use default values
-                        df['macd'] = 0.0
-                        df['macd_signal'] = 0.0
-                        df['macd_hist'] = 0.0
-                else:
-                    if self.logger:
-                        self.logger.warning(f"Not enough data for MACD calculation. Need at least {min_periods} rows, got {len(df)}. Using default values.")
-                    # Use default values
-                    df['macd'] = 0.0
-                    df['macd_signal'] = 0.0
-                    df['macd_hist'] = 0.0
             except Exception as e:
                 if self.logger:
                     self.logger.warning(f"Failed to calculate MACD: {e}, using default values")
