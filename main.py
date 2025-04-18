@@ -17,6 +17,7 @@ from bybit_client import BybitAPIClient
 from strategy import Strategy
 from risk_manager import RiskManager
 from order_manager import OrderManager
+from health_check import HealthCheck
 
 from web_interface import WebInterface, emit_log, emit_status_update
 
@@ -84,6 +85,11 @@ class TradingBot:
         # Bot state
         self.running = False
 
+        # Initialize health check system
+        self.health_check = HealthCheck(logger=self.logger, check_interval=60)
+        self.health_check.start()
+        self.logger.info("Health check system started")
+
         # Initialize web interface if enabled
         self.web_interface = None
         if config.WEB_INTERFACE_ENABLED:
@@ -95,14 +101,24 @@ class TradingBot:
             self.logger.info("Starting WebSocket connection...")
             if self.bybit_client.start_websocket():
                 self.logger.info("WebSocket connection started successfully")
+                self.health_check.update_component_status("websocket", "ok")
 
                 # Subscribe to kline data for main timeframe
                 self.bybit_client.subscribe_kline(symbol=self.symbol, interval=self.timeframe)
             else:
                 self.logger.error("Failed to start WebSocket connection")
+                self.health_check.update_component_status("websocket", "error")
                 self.use_websocket = False
 
         self.logger.info(f"Trading Bot initialized for {self.symbol} on {self.timeframe} timeframe")
+
+        # Update component status in health check
+        self.health_check.update_component_status("api_client", "ok")
+        self.health_check.update_component_status("strategy", "ok")
+        self.health_check.update_component_status("risk_manager", "ok")
+        self.health_check.update_component_status("order_manager", "ok")
+        if config.WEB_INTERFACE_ENABLED:
+            self.health_check.update_component_status("web_interface", "ok")
 
         # Log trading mode
         if self.dry_run:
@@ -148,6 +164,7 @@ class TradingBot:
         while self.running:
             try:
                 # Get historical data for main timeframe (use WebSocket if enabled)
+                start_time = time.time()
                 try:
                     if self.use_websocket:
                         main_klines = self.bybit_client.get_realtime_kline(
@@ -160,8 +177,14 @@ class TradingBot:
                             interval=self.timeframe,
                             limit=100
                         )
+                    # Update API metrics in health check
+                    response_time = (time.time() - start_time) * 1000  # Convert to ms
+                    self.health_check.update_api_metrics(success=True, response_time=response_time)
                 except Exception as e:
                     self.logger.error(f"Error getting klines data: {e}")
+                    # Update API metrics in health check
+                    response_time = (time.time() - start_time) * 1000  # Convert to ms
+                    self.health_check.update_api_metrics(success=False, response_time=response_time)
                     time.sleep(self.check_interval)
                     continue
 
@@ -171,19 +194,26 @@ class TradingBot:
                     continue
 
                 # Calculate indicators for main timeframe
-                main_data = self.strategy.calculate_indicators(main_klines)
-                if main_data is None:
-                    self.logger.error("Failed to calculate indicators for main timeframe, retrying...")
+                try:
+                    main_data = self.strategy.calculate_indicators(main_klines)
+                    if main_data is None:
+                        self.logger.error("Failed to calculate indicators for main timeframe, retrying...")
+                        self.health_check.update_component_status("strategy", "warning")
+                        time.sleep(self.check_interval)
+                        continue
+                    # Update strategy status in health check
+                    self.health_check.update_component_status("strategy", "ok")
+                except Exception as e:
+                    self.logger.error(f"Error calculating indicators: {e}")
+                    self.health_check.update_component_status("strategy", "error")
                     time.sleep(self.check_interval)
                     continue
 
-                # Multi-timeframe analysis has been removed
-
                 # Check if we should exit current position based on opposite signal
-                self.order_manager.check_and_exit_on_signal(main_data, None)
+                self.order_manager.check_and_exit_on_signal(main_data)
 
                 # Generate trading signal
-                signal = self.strategy.generate_signal(main_data, None)
+                signal = self.strategy.generate_signal(main_data)
 
                 # Log signal
                 if signal != "NONE":
@@ -200,7 +230,7 @@ class TradingBot:
 
 
 
-                    # Multi-timeframe analysis has been removed
+
 
                     self.logger.signal(
                         symbol=self.symbol,
@@ -211,13 +241,39 @@ class TradingBot:
 
                 # Execute trading signal
                 if signal in ["LONG", "SHORT"]:
-                    self.order_manager.enter_position(signal, main_data)
+                    try:
+                        result = self.order_manager.enter_position(signal, main_data)
+                        # Update trading metrics in health check
+                        if result:
+                            self.health_check.update_trading_metrics({
+                                "trades_total": self.health_check.trading_metrics["trades_total"] + 1,
+                                "trades_successful": self.health_check.trading_metrics["trades_successful"] + 1
+                            })
+                        else:
+                            self.health_check.update_trading_metrics({
+                                "trades_total": self.health_check.trading_metrics["trades_total"] + 1,
+                                "trades_failed": self.health_check.trading_metrics["trades_failed"] + 1
+                            })
+                    except Exception as e:
+                        self.logger.error(f"Error entering position: {e}")
+                        self.health_check.update_component_status("order_manager", "error")
+                        self.health_check.update_trading_metrics({
+                            "trades_total": self.health_check.trading_metrics["trades_total"] + 1,
+                            "trades_failed": self.health_check.trading_metrics["trades_failed"] + 1
+                        })
 
                 # Get and log balance
+                start_time = time.time()
                 try:
                     balance_info = self.bybit_client.get_wallet_balance()
+                    # Update API metrics in health check
+                    response_time = (time.time() - start_time) * 1000  # Convert to ms
+                    self.health_check.update_api_metrics(success=True, response_time=response_time)
                 except Exception as e:
                     self.logger.error(f"Error getting wallet balance: {e}")
+                    # Update API metrics in health check
+                    response_time = (time.time() - start_time) * 1000  # Convert to ms
+                    self.health_check.update_api_metrics(success=False, response_time=response_time)
                     balance_info = None
 
                 if balance_info:
@@ -228,10 +284,17 @@ class TradingBot:
                     )
 
                 # Get and log positions
+                start_time = time.time()
                 try:
                     positions = self.bybit_client.get_positions(self.symbol)
+                    # Update API metrics in health check
+                    response_time = (time.time() - start_time) * 1000  # Convert to ms
+                    self.health_check.update_api_metrics(success=True, response_time=response_time)
                 except Exception as e:
                     self.logger.error(f"Error getting positions: {e}")
+                    # Update API metrics in health check
+                    response_time = (time.time() - start_time) * 1000  # Convert to ms
+                    self.health_check.update_api_metrics(success=False, response_time=response_time)
                     positions = []
 
                 if positions:
@@ -256,6 +319,9 @@ class TradingBot:
                 error_details = traceback.format_exc()
                 self.logger.error(f"Error in main loop: {e}")
                 self.logger.error(f"Detailed error: {error_details}")
+
+                # Update health check with error
+                self.health_check.update_component_status("api_client", "error")
 
                 if self.notifier:
                     self.notifier.notify_error(f"Error in main loop: {e}")
@@ -295,6 +361,7 @@ class TradingBot:
         if self.use_websocket:
             self.logger.info("Stopping WebSocket...")
             self.bybit_client.stop_websocket()
+            self.health_check.update_component_status("websocket", "unknown")
             emit_log("WebSocket stopped", "info")
 
         # Close all positions if configured
@@ -302,6 +369,11 @@ class TradingBot:
             self.logger.info("Closing all positions...")
             self.order_manager.exit_position(reason="SHUTDOWN")
             emit_log("Closing all positions...", "info")
+
+        # Stop health check system
+        self.logger.info("Stopping health check system...")
+        self.health_check.stop()
+        emit_log("Health check system stopped", "info")
 
         # Send shutdown notification
         if self.notifier:

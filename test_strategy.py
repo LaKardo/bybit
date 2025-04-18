@@ -117,28 +117,7 @@ class TestStrategy(unittest.TestCase):
 
     # Multi-timeframe analysis has been removed
 
-    def test_analyze_timeframe(self):
-        """Test analyze_timeframe method."""
-        # Create a DataFrame with indicators
-        df = self.df.copy()
-        df[f'ema_{self.strategy.fast_ema}'] = [100, 105, 110, 115, 120, 125, 120, 115, 110, 105]
-        df[f'ema_{self.strategy.slow_ema}'] = [95, 100, 105, 110, 115, 120, 125, 120, 115, 110]
-        df['rsi'] = [30, 40, 50, 60, 70, 60, 50, 40, 30, 20]
-        df['macd'] = [0, 1, 2, 3, 4, 3, 2, 1, 0, -1]
-        df['macd_signal'] = [1, 1, 1, 2, 3, 4, 3, 2, 1, 0]
-        df['macd_hist'] = [-1, 0, 1, 1, 1, -1, -1, -1, -1, -1]
-
-
-
-        # Call the method
-        result = self.strategy.analyze_timeframe(df, "1h")
-
-        # Check that the result is a float
-        self.assertIsInstance(result, float)
-
-        # Check that the result is between -1.0 and 1.0
-        self.assertGreaterEqual(result, -1.0)
-        self.assertLessEqual(result, 1.0)
+    # analyze_timeframe method has been removed
 
     # Multi-timeframe analysis has been removed
 
@@ -164,7 +143,7 @@ class TestStrategy(unittest.TestCase):
         self.assertTrue(result)
 
         # Check that the generate_signal method was called
-        self.strategy.generate_signal.assert_called_once_with(df, None)
+        self.strategy.generate_signal.assert_called_once_with(df)
 
     def test_get_atr_value(self):
         """Test get_atr_value method."""

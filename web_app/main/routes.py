@@ -44,3 +44,9 @@ def trades():
 def logs():
     """Render logs page."""
     return render_template('logs.html', bot=bot, config=config)
+
+@main_bp.route('/health')
+@login_required
+def health():
+    """Render health check dashboard page."""
+    return render_template('health.html', bot=bot, config=config)

@@ -349,13 +349,12 @@ class OrderManager:
 
         return True
 
-    def check_and_exit_on_signal(self, price_data, mtf_data=None):
+    def check_and_exit_on_signal(self, price_data):
         """
         Check if position should be exited based on opposite signal.
 
         Args:
             price_data (pandas.DataFrame): Price data with indicators for the main timeframe.
-            mtf_data (dict, optional): Not used, kept for backward compatibility.
 
         Returns:
             bool: True if position was exited, False otherwise.
@@ -390,7 +389,7 @@ class OrderManager:
                 try:
                     from strategy import Strategy
                     strategy = Strategy(self.logger)
-                    should_exit = strategy.should_exit_position(price_data, side, mtf_data)
+                    should_exit = strategy.should_exit_position(price_data, side)
 
                     if should_exit:
                         if self.logger:

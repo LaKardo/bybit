@@ -106,6 +106,36 @@ def generate_mock_data():
 # Mock data for demo mode
 mock_data = generate_mock_data()
 
+# Mock health check data for demo mode
+mock_health_data = {
+    'status': 'ok',
+    'uptime': '1:23:45',
+    'last_check': datetime.now().isoformat(),
+    'components': {
+        'api_client': {'status': 'ok', 'last_success': datetime.now().isoformat(), 'failures': 0},
+        'websocket': {'status': 'ok', 'last_success': datetime.now().isoformat(), 'failures': 0},
+        'strategy': {'status': 'ok', 'last_success': datetime.now().isoformat(), 'failures': 0},
+        'order_manager': {'status': 'ok', 'last_success': datetime.now().isoformat(), 'failures': 0},
+        'risk_manager': {'status': 'ok', 'last_success': datetime.now().isoformat(), 'failures': 0},
+        'web_interface': {'status': 'ok', 'last_success': datetime.now().isoformat(), 'failures': 0}
+    },
+    'issues': []
+}
+
+mock_performance_metrics = {
+    'cpu_avg': 25.5,
+    'memory_avg': 45.2,
+    'api_response_time_avg': 150.3,
+    'api_success_rate': 98.5,
+    'trading_metrics': {
+        'trades_total': 15,
+        'trades_successful': 12,
+        'trades_failed': 3,
+        'profit_loss': 250.75,
+        'win_rate': 80.0
+    }
+}
+
 @api_bp.route('/status', methods=['GET'])
 @login_required
 def get_status():
@@ -353,6 +383,81 @@ def handle_disconnect():
     """Handle client disconnection."""
     logging.info('Client disconnected')
 
+# Health check endpoints
+@api_bp.route('/health', methods=['GET'])
+@login_required
+def get_health():
+    """Get health check summary."""
+    if bot and hasattr(bot, 'health_check'):
+        try:
+            health_summary = bot.health_check.get_health_summary()
+            return jsonify(health_summary)
+        except Exception as e:
+            logging.error(f"Error getting health check summary: {e}")
+            return jsonify({
+                'status': 'ERROR',
+                'message': str(e)
+            }), 500
+    else:
+        # Demo mode
+        return jsonify(mock_health_data)
+
+@api_bp.route('/health/history', methods=['GET'])
+@login_required
+def get_health_history():
+    """Get health check history."""
+    hours = request.args.get('hours', 24, type=int)
+
+    if bot and hasattr(bot, 'health_check'):
+        try:
+            history = bot.health_check.get_health_history(hours=hours)
+            return jsonify(history)
+        except Exception as e:
+            logging.error(f"Error getting health check history: {e}")
+            return jsonify({
+                'status': 'ERROR',
+                'message': str(e)
+            }), 500
+    else:
+        # Demo mode
+        # Generate mock history data
+        history = []
+        for i in range(24):
+            timestamp = datetime.now() - timedelta(hours=i)
+            record = {
+                'timestamp': timestamp.isoformat(),
+                'uptime_seconds': i * 3600,
+                'system': {
+                    'cpu_percent': random.uniform(20, 40),
+                    'memory_percent': random.uniform(40, 60),
+                    'disk_percent': random.uniform(30, 50)
+                },
+                'components': mock_health_data['components'],
+                'issues': []
+            }
+            history.append(record)
+        return jsonify(history)
+
+@api_bp.route('/health/performance', methods=['GET'])
+@login_required
+def get_performance_metrics():
+    """Get performance metrics."""
+    if bot and hasattr(bot, 'health_check'):
+        try:
+            metrics = bot.health_check.get_performance_metrics()
+            # Add trading metrics
+            metrics['trading_metrics'] = bot.health_check.trading_metrics
+            return jsonify(metrics)
+        except Exception as e:
+            logging.error(f"Error getting performance metrics: {e}")
+            return jsonify({
+                'status': 'ERROR',
+                'message': str(e)
+            }), 500
+    else:
+        # Demo mode
+        return jsonify(mock_performance_metrics)
+
 # Emit market data updates periodically
 def emit_market_data_updates():
     """Emit market data updates to connected clients."""
@@ -365,3 +470,16 @@ def emit_market_data_updates():
     else:
         # Demo mode
         socketio.emit('market_data_update', mock_data['market_data'][config.SYMBOL])
+
+# Emit health check updates periodically
+def emit_health_check_updates():
+    """Emit health check updates to connected clients."""
+    if bot and hasattr(bot, 'health_check'):
+        try:
+            health_summary = bot.health_check.get_health_summary()
+            socketio.emit('health_update', health_summary)
+        except Exception as e:
+            logging.error(f"Error emitting health check updates: {e}")
+    else:
+        # Demo mode
+        socketio.emit('health_update', mock_health_data)

@@ -3,8 +3,6 @@ Strategy module for the Bybit Trading Bot.
 Implements the trading strategy using technical indicators.
 """
 
-import pandas as pd
-import numpy as np
 import pandas_ta as ta
 import config
 from bybit_client import BybitAPIClient
@@ -115,13 +113,12 @@ class Strategy:
                     self.logger.error(f"DataFrame head: {df.head(1).to_dict()}")
             return None
 
-    def generate_signal(self, df, mtf_data=None):
+    def generate_signal(self, df):
         """
         Generate trading signal based on indicators.
 
         Args:
             df (pandas.DataFrame): Price data with indicators for the main timeframe.
-            mtf_data (dict, optional): Not used, kept for backward compatibility.
 
         Returns:
             str: Signal (LONG, SHORT, NONE).
@@ -140,116 +137,13 @@ class Strategy:
                 self.logger.error(f"Failed to generate signal: {e}")
             return "NONE"
 
-    def analyze_timeframe(self, df, timeframe):
-        """
-        Analyze a single timeframe and return a signal score.
 
-        Args:
-            df (pandas.DataFrame): Price data with indicators for the timeframe.
-            timeframe (str): The timeframe being analyzed.
-
-        Returns:
-            float: Signal score (-1.0 to 1.0) where:
-                  - Positive values indicate bullish bias (higher = stronger)
-                  - Negative values indicate bearish bias (lower = stronger)
-                  - Zero indicates no clear bias
-        """
-        if df is None or df.empty or len(df) < 2:
-            if self.logger:
-                self.logger.debug(f"Cannot analyze {timeframe} timeframe: Insufficient data")
-            return 0.0
-
-        try:
-            # Get the last two rows for crossover detection
-            current = df.iloc[-1]
-            previous = df.iloc[-2]
-
-            # Initialize score
-            score = 0.0
-
-            # EMA trend and crossover (weight: 0.3)
-            fast_ema_current = current[f'ema_{self.fast_ema}']
-            fast_ema_previous = previous[f'ema_{self.fast_ema}']
-            slow_ema_current = current[f'ema_{self.slow_ema}']
-            slow_ema_previous = previous[f'ema_{self.slow_ema}']
-
-            # EMA crossover
-            ema_crossover_up = fast_ema_previous < slow_ema_previous and fast_ema_current > slow_ema_current
-            ema_crossover_down = fast_ema_previous > slow_ema_previous and fast_ema_current < slow_ema_current
-
-            # EMA trend
-            ema_trend = (fast_ema_current - fast_ema_previous) / fast_ema_previous
-
-            if ema_crossover_up:
-                score += 0.3
-            elif ema_crossover_down:
-                score -= 0.3
-            else:
-                # Add smaller score based on EMA trend direction
-                score += min(max(ema_trend * 10, -0.15), 0.15)  # Cap at ±0.15
-
-            # RSI (weight: 0.2)
-            rsi_current = current['rsi']
-
-            # RSI oversold/overbought
-            if rsi_current < 30:  # Oversold
-                score += 0.15
-            elif rsi_current > 70:  # Overbought
-                score -= 0.15
-            else:
-                # Normalize RSI between -0.1 and 0.1 for values between 30 and 70
-                normalized_rsi = ((rsi_current - 50) / 20) * 0.1
-                score += normalized_rsi
-
-            # MACD (weight: 0.25)
-            try:
-                macd_current = float(current['macd'])
-                macd_signal_current = float(current['macd_signal'])
-                macd_hist_current = float(current['macd_hist'])
-                macd_previous = float(previous['macd'])
-                macd_signal_previous = float(previous['macd_signal'])
-
-                # MACD crossover
-                macd_crossover_up = macd_previous < macd_signal_previous and macd_current > macd_signal_current
-                macd_crossover_down = macd_previous > macd_signal_previous and macd_current < macd_signal_current
-            except (TypeError, ValueError, KeyError) as e:
-                if self.logger:
-                    self.logger.debug(f"MACD calculation error in analyze_timeframe: {e}, using default values")
-                macd_current = 0.0
-                macd_signal_current = 0.0
-                macd_hist_current = 0.0
-                macd_crossover_up = False
-                macd_crossover_down = False
-
-            if macd_crossover_up:
-                score += 0.2
-            elif macd_crossover_down:
-                score -= 0.2
-            else:
-                # Add smaller score based on histogram
-                score += min(max(macd_hist_current * 5, -0.15), 0.15)  # Cap at ±0.15
-
-
-
-            # Cap final score between -1.0 and 1.0
-            score = min(max(score, -1.0), 1.0)
-
-            if self.logger:
-                self.logger.debug(f"{timeframe} analysis score: {score:.2f}")
-
-            return score
-
-        except Exception as e:
-            if self.logger:
-                self.logger.error(f"Failed to analyze {timeframe} timeframe: {e}")
-            return 0.0
 
     # Multi-timeframe analysis has been removed
 
     def _generate_signal_from_single_timeframe(self, df):
         """
-        Generate trading signal based on indicators from a single timeframe.
-        This is the original signal generation logic.
+        Generate trading signal based on indicators.
 
         Args:
             df (pandas.DataFrame): Price data with indicators.
@@ -333,14 +227,13 @@ class Strategy:
 
     # Multi-timeframe helper methods have been removed
 
-    def should_exit_position(self, df, position_side, mtf_data=None):
+    def should_exit_position(self, df, position_side):
         """
         Check if position should be exited based on opposite signal.
 
         Args:
             df (pandas.DataFrame): Price data with indicators.
             position_side (str): Current position side (Buy or Sell).
-            mtf_data (dict, optional): Not used, kept for backward compatibility.
 
         Returns:
             bool: True if position should be exited, False otherwise.
@@ -349,7 +242,7 @@ class Strategy:
             return False
 
         try:
-            # Generate signal using single timeframe analysis
+            # Generate signal
             signal = self.generate_signal(df)
 
             # Exit long position on SHORT signal

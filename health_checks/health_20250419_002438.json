@@ -1,0 +1,65 @@
+{
+  "timestamp": "2025-04-19T00:24:36.654640",
+  "uptime_seconds": 0.001665,
+  "system": {
+    "cpu_percent": 46.2,
+    "memory_percent": 53.2,
+    "disk_percent": 77.2,
+    "process_cpu_percent": 71.8,
+    "process_memory_mb": 120.6171875,
+    "bytes_sent": 177080129,
+    "bytes_recv": 105616788,
+    "packets_sent": 290016,
+    "packets_recv": 324039
+  },
+  "components": {
+    "api_client": {
+      "status": "ok",
+      "last_success": "2025-04-19T00:24:38.439954",
+      "failures": 0
+    },
+    "websocket": {
+      "status": "ok",
+      "last_success": "2025-04-19T00:24:38.439022",
+      "failures": 0
+    },
+    "strategy": {
+      "status": "ok",
+      "last_success": "2025-04-19T00:24:38.456478",
+      "failures": 0
+    },
+    "order_manager": {
+      "status": "ok",
+      "last_success": "2025-04-19T00:24:38.439970",
+      "failures": 0
+    },
+    "risk_manager": {
+      "status": "ok",
+      "last_success": "2025-04-19T00:24:38.439967",
+      "failures": 0
+    },
+    "web_interface": {
+      "status": "ok",
+      "last_success": "2025-04-19T00:24:38.439975",
+      "failures": 0
+    }
+  },
+  "trading": {
+    "trades_total": 0,
+    "trades_successful": 0,
+    "trades_failed": 0,
+    "profit_loss": 0.0,
+    "win_rate": 0.0,
+    "avg_profit": 0.0,
+    "avg_loss": 0.0,
+    "largest_profit": 0.0,
+    "largest_loss": 0.0
+  },
+  "api": {
+    "calls_total": 1,
+    "calls_successful": 1,
+    "calls_failed": 0,
+    "avg_response_time": 1.6338825225830078,
+    "max_response_time": 1.6338825225830078
+  }
+}

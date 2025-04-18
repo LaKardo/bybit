@@ -94,21 +94,73 @@ class BybitAPIClient:
         self.ws_data = {}
         self.ws_lock = threading.Lock()
         self.ws_thread = None
+        self.ws_reconnect_attempts = 0
+        self.ws_max_reconnect_attempts = 5
+        self.ws_reconnect_delay = 5  # Initial delay in seconds
+        self.ws_last_reconnect_time = 0
+        self.ws_subscribed_topics = set()  # Track subscribed topics for reconnection
 
         if self.logger:
             self.logger.info(f"Bybit API client initialized")
 
-    def _log_error(self, error, message):
+    def _log_error(self, error, message, include_traceback=True, log_level="error"):
         """
-        Log error with traceback.
+        Log error with traceback and additional context.
 
         Args:
             error (Exception): The exception object.
             message (str): Error message prefix.
+            include_traceback (bool, optional): Whether to include traceback. Defaults to True.
+            log_level (str, optional): Log level to use. Defaults to "error".
         """
-        if self.logger:
-            self.logger.error(f"{message}: {error}")
+        if not self.logger:
+            return
+
+        # Format the error message
+        error_msg = f"{message}: {error}"
+
+        # Get the calling function name for better context
+        import inspect
+        caller_frame = inspect.currentframe().f_back
+        caller_function = caller_frame.f_code.co_name if caller_frame else "unknown"
+        caller_line = caller_frame.f_lineno if caller_frame else 0
+
+        # Add context information
+        context_msg = f"[{caller_function}:{caller_line}] {error_msg}"
+
+        # Log at the appropriate level
+        if log_level == "debug":
+            self.logger.debug(context_msg)
+        elif log_level == "info":
+            self.logger.info(context_msg)
+        elif log_level == "warning":
+            self.logger.warning(context_msg)
+        else:  # Default to error
+            self.logger.error(context_msg)
+
+        # Include traceback if requested
+        if include_traceback:
             self.logger.error(f"Detailed error: {self.traceback.format_exc()}")
+
+        # For critical errors, log additional system information
+        if log_level == "critical":
+            import platform
+            import sys
+
+            # Try to get memory info if psutil is available
+            memory_info = "N/A"
+            try:
+                import psutil
+                memory_info = f"{psutil.virtual_memory().percent}% used"
+            except ImportError:
+                pass
+
+            system_info = {
+                "python_version": sys.version,
+                "platform": platform.platform(),
+                "memory": memory_info
+            }
+            self.logger.critical(f"System information: {system_info}")
 
     def _safe_float_conversion(self, value, field_name, default=0.0):
         """
@@ -185,10 +237,11 @@ class BybitAPIClient:
             **kwargs: Function keyword arguments.
 
         Returns:
-            dict: API response or empty dict on error.
+            dict: API response or error response dict on error.
         """
         max_retries = config.MAX_RETRIES
         retry_delay = config.RETRY_DELAY
+        func_name = func.__name__ if hasattr(func, '__name__') else str(func)
 
         # Check if we're in dry run mode and API keys are invalid
         if config.DRY_RUN and is_invalid_api_key(self.api_key, self.api_secret):
@@ -196,44 +249,98 @@ class BybitAPIClient:
                 self.logger.error("API keys are invalid. Please set valid API keys in .env file.")
             return {"retCode": -1, "retMsg": "Invalid API keys"}
 
+        # Define retryable error patterns
+        retryable_errors = [
+            "timeout", "timed out", "connection", "socket", "reset", "broken pipe",
+            "too many requests", "rate limit", "429", "503", "502", "500", "504",
+            "server error", "maintenance", "overloaded", "unavailable", "busy"
+        ]
+
+        # Define non-retryable error patterns
+        non_retryable_errors = [
+            "invalid api key", "api key expired", "api key not found", "invalid signature",
+            "permission denied", "unauthorized", "auth failed", "authentication failed",
+            "not authorized", "access denied", "forbidden", "403", "401",
+            "invalid parameter", "parameter error", "invalid argument", "bad request", "400"
+        ]
+
         for attempt in range(max_retries):
             try:
+                if self.logger and attempt > 0:
+                    self.logger.debug(f"Retry attempt {attempt+1}/{max_retries} for {func_name}")
+
                 response = func(*args, **kwargs)
 
-                # Check if the response indicates an authentication error
-                # Only check for specific authentication error codes
-                if response and (response.get("retCode") == 401 or response.get("retCode") == 10003):
-                    if self.logger:
-                        self.logger.error(f"Authentication error: {response.get('retMsg', 'Unknown error')}")
-                        self.logger.error(f"Please check your API keys in config.py")
-                    # Don't retry on authentication errors
-                    return {"retCode": -1, "retMsg": "Authentication error. Please check your API keys."}
+                # Check if the response indicates an error
+                if response and isinstance(response, dict):
+                    ret_code = response.get("retCode")
+                    ret_msg = response.get("retMsg", "Unknown error")
 
+                    # Check for authentication errors
+                    if ret_code in [401, 10003, 10004, 10005, 10006, 10007, 10008, 10009]:
+                        if self.logger:
+                            self.logger.error(f"Authentication error: {ret_msg}")
+                            self.logger.error(f"Please check your API keys in config.py")
+                        # Don't retry on authentication errors
+                        return {"retCode": -1, "retMsg": f"Authentication error: {ret_msg}. Please check your API keys."}
+
+                    # Check for rate limit errors
+                    if ret_code in [10018, 10019, 10020, 10021, 429]:
+                        if attempt < max_retries - 1:
+                            wait_time = retry_delay * (2 ** attempt)  # Exponential backoff
+                            if self.logger:
+                                self.logger.warning(f"Rate limit hit, waiting {wait_time}s before retry: {ret_msg}")
+                            time.sleep(wait_time)
+                            continue
+
+                    # Check for server errors
+                    if ret_code in [500, 502, 503, 504, 10002, 10010, 10011, 10012, 10013, 10014, 10015, 10016, 10017]:
+                        if attempt < max_retries - 1:
+                            wait_time = retry_delay * (2 ** attempt)  # Exponential backoff
+                            if self.logger:
+                                self.logger.warning(f"Server error, waiting {wait_time}s before retry: {ret_msg}")
+                            time.sleep(wait_time)
+                            continue
+
+                # Return the response if we get here
                 return response
+
             except Exception as e:
-                if attempt < max_retries - 1:
+                error_str = str(e).lower()
+                is_retryable = any(err in error_str for err in retryable_errors)
+                is_non_retryable = any(err in error_str for err in non_retryable_errors)
+
+                if is_non_retryable:
                     if self.logger:
-                        self.logger.warning(f"API call failed, retrying in {retry_delay}s: {e}")
-                    time.sleep(retry_delay)
-                    retry_delay *= 2  # Exponential backoff
+                        self.logger.error(f"Non-retryable error in {func_name}: {e}")
+                        self.logger.error(f"Please check your API keys and parameters")
+                    # Don't retry on non-retryable errors
+                    return {"retCode": -1, "retMsg": f"API error: {e}"}
+
+                if attempt < max_retries - 1 and is_retryable:
+                    wait_time = retry_delay * (2 ** attempt)  # Exponential backoff
+                    if self.logger:
+                        self.logger.warning(f"API call failed, retrying in {wait_time}s: {e}")
+                    time.sleep(wait_time)
                 else:
                     if self.logger:
-                        self.logger.error(f"API call failed after {max_retries} attempts: {e}")
+                        self.logger.error(f"API call to {func_name} failed after {attempt+1} attempts: {e}")
                         # Log more detailed error information
-                        import traceback
-                        self.logger.error(f"Detailed error: {traceback.format_exc()}")
-                        self.logger.error(f"Function: {func.__name__}, Args: {args}, Kwargs: {kwargs}")
+                        self.logger.error(f"Detailed error: {self.traceback.format_exc()}")
+                        self.logger.error(f"Args: {args}, Kwargs: {kwargs}")
+
                     # Check if it's an authentication error - use more specific checks
-                    if ("401" in str(e) and "status code" in str(e)) or \
-                       "API key is invalid" in str(e) or \
-                       "ErrCode: 401" in str(e) or \
-                       ("Http status code is not 200" in str(e) and "authentication" in str(e).lower()):
+                    if ("401" in error_str and "status code" in error_str) or \
+                       "api key is invalid" in error_str or \
+                       "errcode: 401" in error_str or \
+                       ("http status code is not 200" in error_str and "authentication" in error_str):
                         if self.logger:
                             self.logger.error(f"Authentication error: {e}")
                             self.logger.error(f"Please check your API keys in config.py")
-                        return {"retCode": -1, "retMsg": "Authentication error. Please check your API keys."}
-                    # Return empty dict for other errors
-                    return {"retCode": -1, "retMsg": str(e)}
+                        return {"retCode": -1, "retMsg": f"Authentication error: {e}. Please check your API keys."}
+
+                    # Return error response for other errors
+                    return {"retCode": -1, "retMsg": f"API error: {e}"}
 
     def get_server_time(self):
         """
@@ -465,56 +572,134 @@ class BybitAPIClient:
                 # Fill NaN values with forward fill, then backward fill for any remaining NaNs
                 df[self.macd_price_col] = df[self.macd_price_col].fillna(method='ffill').fillna(method='bfill')
 
-            # Convert to numpy array for faster calculation
-            price_array = df[self.macd_price_col].values
+            # Use pandas_ta for MACD calculation if available (much faster and more accurate)
+            try:
+                import pandas_ta as ta
 
-            # Calculate EMAs for MACD using vectorized operations
-            # For EMA calculation: EMA_today = price_today * k + EMA_yesterday * (1 - k)
-            # where k = 2 / (span + 1)
-            fast_k = 2.0 / (self.macd_fast + 1)
-            slow_k = 2.0 / (self.macd_slow + 1)
-            signal_k = 2.0 / (self.macd_signal + 1)
+                # If we're calculating for a subset, we need to include some history for accurate calculation
+                if start_idx > 0:
+                    # Include enough history for accurate calculation
+                    calc_start_idx = max(0, start_idx - min_periods * 2)
 
-            # Initialize arrays for EMA calculation
-            fast_ema = np.zeros_like(price_array)
-            slow_ema = np.zeros_like(price_array)
+                    # Calculate MACD for the subset plus history
+                    macd_result = ta.macd(
+                        df[self.macd_price_col].iloc[calc_start_idx:end_idx],
+                        fast=self.macd_fast,
+                        slow=self.macd_slow,
+                        signal=self.macd_signal
+                    )
 
-            # Calculate initial SMA values for the first points
-            fast_ema[0:self.macd_fast] = np.mean(price_array[0:self.macd_fast])
-            slow_ema[0:self.macd_slow] = np.mean(price_array[0:self.macd_slow])
+                    # Extract the columns we need
+                    macd_line = macd_result['MACD_' + str(self.macd_fast) + '_' + str(self.macd_slow) + '_' + str(self.macd_signal)]
+                    macd_signal = macd_result['MACDs_' + str(self.macd_fast) + '_' + str(self.macd_slow) + '_' + str(self.macd_signal)]
+                    macd_hist = macd_result['MACDh_' + str(self.macd_fast) + '_' + str(self.macd_slow) + '_' + str(self.macd_signal)]
 
-            # Calculate EMAs using vectorized operations
-            for i in range(self.macd_fast, len(price_array)):
-                fast_ema[i] = price_array[i] * fast_k + fast_ema[i-1] * (1 - fast_k)
+                    # Assign to the original dataframe, but only for the requested range
+                    # We need to account for the offset in indices
+                    offset = start_idx - calc_start_idx
 
-            for i in range(self.macd_slow, len(price_array)):
-                slow_ema[i] = price_array[i] * slow_k + slow_ema[i-1] * (1 - slow_k)
+                    # If we already have MACD columns, update only the requested range
+                    if 'macd' in df.columns and 'macd_signal' in df.columns and 'macd_hist' in df.columns:
+                        df.loc[df.index[start_idx:end_idx], 'macd'] = macd_line.iloc[offset:offset + (end_idx - start_idx)].values
+                        df.loc[df.index[start_idx:end_idx], 'macd_signal'] = macd_signal.iloc[offset:offset + (end_idx - start_idx)].values
+                        df.loc[df.index[start_idx:end_idx], 'macd_hist'] = macd_hist.iloc[offset:offset + (end_idx - start_idx)].values
+                    else:
+                        # Initialize columns with NaN
+                        df['macd'] = np.nan
+                        df['macd_signal'] = np.nan
+                        df['macd_hist'] = np.nan
 
-            # Calculate MACD line
-            macd_line = fast_ema - slow_ema
+                        # Update only the requested range
+                        df.loc[df.index[start_idx:end_idx], 'macd'] = macd_line.iloc[offset:offset + (end_idx - start_idx)].values
+                        df.loc[df.index[start_idx:end_idx], 'macd_signal'] = macd_signal.iloc[offset:offset + (end_idx - start_idx)].values
+                        df.loc[df.index[start_idx:end_idx], 'macd_hist'] = macd_hist.iloc[offset:offset + (end_idx - start_idx)].values
+                else:
+                    # Calculate MACD for the entire dataframe or requested range
+                    macd_result = ta.macd(
+                        df[self.macd_price_col].iloc[start_idx:end_idx],
+                        fast=self.macd_fast,
+                        slow=self.macd_slow,
+                        signal=self.macd_signal
+                    )
 
-            # Calculate signal line
-            signal_line = np.zeros_like(macd_line)
-            signal_line[0:self.macd_signal] = np.mean(macd_line[0:self.macd_signal])
+                    # Extract the columns we need
+                    macd_line = macd_result['MACD_' + str(self.macd_fast) + '_' + str(self.macd_slow) + '_' + str(self.macd_signal)]
+                    macd_signal = macd_result['MACDs_' + str(self.macd_fast) + '_' + str(self.macd_slow) + '_' + str(self.macd_signal)]
+                    macd_hist = macd_result['MACDh_' + str(self.macd_fast) + '_' + str(self.macd_slow) + '_' + str(self.macd_signal)]
 
-            for i in range(self.macd_signal, len(macd_line)):
-                signal_line[i] = macd_line[i] * signal_k + signal_line[i-1] * (1 - signal_k)
+                    # Assign to the original dataframe
+                    if 'macd' in df.columns and 'macd_signal' in df.columns and 'macd_hist' in df.columns:
+                        df.loc[df.index[start_idx:end_idx], 'macd'] = macd_line.values
+                        df.loc[df.index[start_idx:end_idx], 'macd_signal'] = macd_signal.values
+                        df.loc[df.index[start_idx:end_idx], 'macd_hist'] = macd_hist.values
+                    else:
+                        # Initialize columns with NaN
+                        df['macd'] = np.nan
+                        df['macd_signal'] = np.nan
+                        df['macd_hist'] = np.nan
 
-            # Calculate histogram
-            histogram = macd_line - signal_line
+                        # Update only the requested range
+                        df.loc[df.index[start_idx:end_idx], 'macd'] = macd_line.values
+                        df.loc[df.index[start_idx:end_idx], 'macd_signal'] = macd_signal.values
+                        df.loc[df.index[start_idx:end_idx], 'macd_hist'] = macd_hist.values
 
-            # Assign to dataframe
-            df['macd'] = macd_line
-            df['macd_signal'] = signal_line
-            df['macd_hist'] = histogram
+                if self.logger:
+                    self.logger.debug("MACD calculated successfully using pandas_ta library")
+            except (ImportError, Exception) as e:
+                if self.logger:
+                    self.logger.warning(f"Failed to calculate MACD using pandas_ta: {e}. Falling back to manual calculation.")
+
+                # Fall back to manual calculation
+                # Convert to numpy array for faster calculation
+                price_array = df[self.macd_price_col].values
+
+                # Calculate EMAs for MACD using vectorized operations
+                # For EMA calculation: EMA_today = price_today * k + EMA_yesterday * (1 - k)
+                # where k = 2 / (span + 1)
+                fast_k = 2.0 / (self.macd_fast + 1)
+                slow_k = 2.0 / (self.macd_slow + 1)
+                signal_k = 2.0 / (self.macd_signal + 1)
+
+                # Initialize arrays for EMA calculation
+                fast_ema = np.zeros_like(price_array)
+                slow_ema = np.zeros_like(price_array)
+
+                # Calculate initial SMA values for the first points
+                fast_ema[0:self.macd_fast] = np.mean(price_array[0:self.macd_fast])
+                slow_ema[0:self.macd_slow] = np.mean(price_array[0:self.macd_slow])
+
+                # Calculate EMAs using vectorized operations
+                for i in range(self.macd_fast, len(price_array)):
+                    fast_ema[i] = price_array[i] * fast_k + fast_ema[i-1] * (1 - fast_k)
+
+                for i in range(self.macd_slow, len(price_array)):
+                    slow_ema[i] = price_array[i] * slow_k + slow_ema[i-1] * (1 - slow_k)
+
+                # Calculate MACD line
+                macd_line = fast_ema - slow_ema
+
+                # Calculate signal line
+                signal_line = np.zeros_like(macd_line)
+                signal_line[0:self.macd_signal] = np.mean(macd_line[0:self.macd_signal])
+
+                for i in range(self.macd_signal, len(macd_line)):
+                    signal_line[i] = macd_line[i] * signal_k + signal_line[i-1] * (1 - signal_k)
+
+                # Calculate histogram
+                histogram = macd_line - signal_line
+
+                # Assign to dataframe
+                df['macd'] = macd_line
+                df['macd_signal'] = signal_line
+                df['macd_hist'] = histogram
+
+                if self.logger:
+                    self.logger.debug("MACD calculated successfully using manual calculation")
 
             # Fill any remaining NaN values with 0
             df['macd'] = df['macd'].fillna(0.0)
             df['macd_signal'] = df['macd_signal'].fillna(0.0)
             df['macd_hist'] = df['macd_hist'].fillna(0.0)
-
-            if self.logger:
-                self.logger.debug("MACD calculated successfully using optimized method")
 
         except Exception as e:
             self._log_error(e, "Failed to calculate MACD")
@@ -1438,6 +1623,9 @@ class BybitAPIClient:
             return True
 
         try:
+            # Reset reconnect attempts if this is a manual start
+            self.ws_reconnect_attempts = 0
+
             # Log the parameters being used
             if self.logger:
                 self.logger.debug(f"Starting WebSocket with parameters: testnet=False, domain=bybit, channel_type=linear")
@@ -1453,6 +1641,10 @@ class BybitAPIClient:
 
             # Set WebSocket as enabled
             self.ws_enabled = True
+            self.ws_last_reconnect_time = int(time.time())
+
+            # Resubscribe to previously subscribed topics
+            self._resubscribe_to_topics()
 
             if self.logger:
                 self.logger.info("WebSocket started successfully")
@@ -1836,10 +2028,10 @@ class BybitAPIClient:
             # Format topic
             topic = f"kline.{interval}.{symbol}"
 
-            # Check if already subscribed
+            # Check if already subscribed in our local tracking
             if topic in self.ws_callbacks:
                 if self.logger:
-                    self.logger.debug(f"Already subscribed to {topic}")
+                    self.logger.debug(f"Already subscribed to {topic} (local tracking)")
                 return True
 
             # Check if PyBit already has this subscription
@@ -1850,38 +2042,60 @@ class BybitAPIClient:
                     callback_directory = self.ws_client._callback_directory
                     if topic in callback_directory:
                         if self.logger:
-                            self.logger.debug(f"PyBit already subscribed to {topic}")
+                            self.logger.debug(f"PyBit already subscribed to {topic}, adding to local tracking")
                         # Add to our local tracking
                         self.ws_callbacks[topic] = None
+                        # Add to subscribed topics for reconnection
+                        self.ws_subscribed_topics.add(("kline", symbol, interval))
                         return True
             except Exception as e:
                 # Ignore errors in this check
                 if self.logger:
                     self.logger.debug(f"Error checking PyBit subscriptions: {e}")
 
-            # Register callback
-            if callback is not None and callable(callback):
-                self.ws_callbacks[topic] = callback
+            # Register callback in our local tracking before attempting to subscribe
+            # This helps prevent race conditions where multiple subscribe attempts happen simultaneously
+            self.ws_callbacks[topic] = callback if callback is not None and callable(callback) else None
 
             # Log the parameters being sent
             if self.logger:
                 self.logger.debug(f"Subscribing to kline stream with parameters: interval={interval}, symbol={symbol}")
 
-            # Subscribe to topic
-            self.ws_client.kline_stream(
-                interval=interval,
-                symbol=symbol,
-                callback=self._ws_callback
-            )
+            try:
+                # Subscribe to topic
+                self.ws_client.kline_stream(
+                    interval=interval,
+                    symbol=symbol,
+                    callback=self._ws_callback
+                )
 
-            if self.logger:
-                self.logger.info(f"Subscribed to kline data for {symbol} ({interval})")
+                # Add to subscribed topics for reconnection
+                self.ws_subscribed_topics.add(("kline", symbol, interval))
 
-            return True
+                if self.logger:
+                    self.logger.info(f"Subscribed to kline data for {symbol} ({interval})")
+
+                return True
+            except Exception as sub_error:
+                # If we get an error about already being subscribed, consider it a success
+                if "You have already subscribed to this topic" in str(sub_error):
+                    if self.logger:
+                        self.logger.debug(f"Already subscribed to {topic} (from PyBit exception)")
+                    # Add to subscribed topics for reconnection
+                    self.ws_subscribed_topics.add(("kline", symbol, interval))
+                    return True
+                else:
+                    # For other errors, remove from our tracking and re-raise
+                    if topic in self.ws_callbacks:
+                        del self.ws_callbacks[topic]
+                    raise sub_error
         except Exception as e:
             self._log_error(e, "Failed to subscribe to kline data")
             if self.logger:
                 self.logger.debug(f"Subscription parameters: interval={interval}, symbol={symbol}")
+            # Check if we need to reconnect the WebSocket
+            if "Connection is closed" in str(e) or "Not connected" in str(e):
+                self._reconnect_websocket()
             return False
 
     def subscribe_ticker(self, symbol=None, callback=None):
@@ -1906,10 +2120,10 @@ class BybitAPIClient:
             # Format topic
             topic = f"tickers.{symbol}"
 
-            # Check if already subscribed
+            # Check if already subscribed in our local tracking
             if topic in self.ws_callbacks:
                 if self.logger:
-                    self.logger.debug(f"Already subscribed to {topic}")
+                    self.logger.debug(f"Already subscribed to {topic} (local tracking)")
                 return True
 
             # Check if PyBit already has this subscription
@@ -1920,36 +2134,147 @@ class BybitAPIClient:
                     callback_directory = self.ws_client._callback_directory
                     if topic in callback_directory:
                         if self.logger:
-                            self.logger.debug(f"PyBit already subscribed to {topic}")
+                            self.logger.debug(f"PyBit already subscribed to {topic}, adding to local tracking")
                         # Add to our local tracking
                         self.ws_callbacks[topic] = None
+                        # Add to subscribed topics for reconnection
+                        self.ws_subscribed_topics.add(("ticker", symbol, None))
                         return True
             except Exception as e:
                 # Ignore errors in this check
                 if self.logger:
                     self.logger.debug(f"Error checking PyBit subscriptions: {e}")
 
-            # Register callback
-            if callback is not None and callable(callback):
-                self.ws_callbacks[topic] = callback
+            # Register callback in our local tracking before attempting to subscribe
+            # This helps prevent race conditions where multiple subscribe attempts happen simultaneously
+            self.ws_callbacks[topic] = callback if callback is not None and callable(callback) else None
 
             # Log the parameters being sent
             if self.logger:
                 self.logger.debug(f"Subscribing to ticker stream with parameters: symbol={symbol}")
 
-            # Subscribe to topic
-            self.ws_client.ticker_stream(
-                symbol=symbol,
-                callback=self._ws_callback
-            )
+            try:
+                # Subscribe to topic
+                self.ws_client.ticker_stream(
+                    symbol=symbol,
+                    callback=self._ws_callback
+                )
 
-            if self.logger:
-                self.logger.info(f"Subscribed to ticker data for {symbol}")
+                # Add to subscribed topics for reconnection
+                self.ws_subscribed_topics.add(("ticker", symbol, None))
 
-            return True
+                if self.logger:
+                    self.logger.info(f"Subscribed to ticker data for {symbol}")
+
+                return True
+            except Exception as sub_error:
+                # If we get an error about already being subscribed, consider it a success
+                if "You have already subscribed to this topic" in str(sub_error):
+                    if self.logger:
+                        self.logger.debug(f"Already subscribed to {topic} (from PyBit exception)")
+                    # Add to subscribed topics for reconnection
+                    self.ws_subscribed_topics.add(("ticker", symbol, None))
+                    return True
+                else:
+                    # For other errors, remove from our tracking and re-raise
+                    if topic in self.ws_callbacks:
+                        del self.ws_callbacks[topic]
+                    raise sub_error
         except Exception as e:
             self._log_error(e, "Failed to subscribe to ticker data")
+            if self.logger:
+                self.logger.debug(f"Subscription parameters: symbol={symbol}")
+            # Check if we need to reconnect the WebSocket
+            if "Connection is closed" in str(e) or "Not connected" in str(e):
+                self._reconnect_websocket()
             return False
+
+    def _reconnect_websocket(self):
+        """
+        Reconnect WebSocket connection with exponential backoff.
+
+        Returns:
+            bool: True if reconnected successfully, False otherwise.
+        """
+        # Check if we've exceeded the maximum number of reconnect attempts
+        if self.ws_reconnect_attempts >= self.ws_max_reconnect_attempts:
+            if self.logger:
+                self.logger.error(f"Failed to reconnect WebSocket after {self.ws_reconnect_attempts} attempts")
+            return False
+
+        # Check if we need to wait before reconnecting (to avoid hammering the server)
+        current_time = int(time.time())
+        time_since_last_reconnect = current_time - self.ws_last_reconnect_time
+        reconnect_delay = min(300, self.ws_reconnect_delay * (2 ** self.ws_reconnect_attempts))  # Exponential backoff with 5 minute cap
+
+        if time_since_last_reconnect < reconnect_delay:
+            if self.logger:
+                self.logger.debug(f"Waiting {reconnect_delay - time_since_last_reconnect}s before reconnecting WebSocket")
+            time.sleep(reconnect_delay - time_since_last_reconnect)
+
+        # Increment reconnect attempts
+        self.ws_reconnect_attempts += 1
+
+        if self.logger:
+            self.logger.info(f"Reconnecting WebSocket (attempt {self.ws_reconnect_attempts}/{self.ws_max_reconnect_attempts})")
+
+        # Stop the WebSocket first
+        self.stop_websocket()
+
+        # Start the WebSocket again
+        if self.start_websocket():
+            if self.logger:
+                self.logger.info("WebSocket reconnected successfully")
+            return True
+        else:
+            if self.logger:
+                self.logger.error("Failed to reconnect WebSocket")
+            return False
+
+    def _resubscribe_to_topics(self):
+        """
+        Resubscribe to all previously subscribed topics after reconnection.
+
+        Returns:
+            bool: True if all resubscriptions were successful, False otherwise.
+        """
+        if not self.ws_enabled or self.ws_client is None:
+            if self.logger:
+                self.logger.warning("WebSocket not started, cannot resubscribe")
+            return False
+
+        if not self.ws_subscribed_topics:
+            if self.logger:
+                self.logger.debug("No topics to resubscribe to")
+            return True
+
+        success = True
+        for topic_type, symbol, interval in self.ws_subscribed_topics:
+            try:
+                if self.logger:
+                    self.logger.debug(f"Resubscribing to {topic_type} for {symbol} {interval if interval else ''}")
+
+                if topic_type == "kline":
+                    if not self.subscribe_kline(symbol, interval):
+                        if self.logger:
+                            self.logger.warning(f"Failed to resubscribe to kline data for {symbol} ({interval})")
+                        success = False
+                elif topic_type == "ticker":
+                    if not self.subscribe_ticker(symbol):
+                        if self.logger:
+                            self.logger.warning(f"Failed to resubscribe to ticker data for {symbol}")
+                        success = False
+            except Exception as e:
+                self._log_error(e, f"Failed to resubscribe to {topic_type} for {symbol} {interval if interval else ''}")
+                success = False
+
+        if self.logger:
+            if success:
+                self.logger.info("Successfully resubscribed to all topics")
+            else:
+                self.logger.warning("Some topics failed to resubscribe")
+
+        return success
 
     def unsubscribe_topic(self, topic):
         """
@@ -1969,6 +2294,21 @@ class BybitAPIClient:
         try:
             # In PyBit V5 API, we can't directly unsubscribe from a topic
             # So we just remove our local references to it
+
+            # Remove from subscribed topics for reconnection
+            if topic.startswith("kline."):
+                # Topic format: kline.{interval}.{symbol}
+                parts = topic.split('.')
+                if len(parts) == 3:
+                    interval = parts[1]
+                    symbol = parts[2]
+                    self.ws_subscribed_topics.discard(("kline", symbol, interval))
+            elif topic.startswith("tickers."):
+                # Topic format: tickers.{symbol}
+                parts = topic.split('.')
+                if len(parts) == 2:
+                    symbol = parts[1]
+                    self.ws_subscribed_topics.discard(("ticker", symbol, None))
 
             # Remove callback
             if topic in self.ws_callbacks:
@@ -2038,23 +2378,17 @@ class BybitAPIClient:
 
                 # Only try to subscribe if we're not already subscribed
                 if not is_subscribed:
+                    # The subscribe_kline method now handles the "already subscribed" error internally
                     if not self.subscribe_kline(symbol, interval):
                         if self.logger:
                             self.logger.warning("Failed to subscribe to kline data, falling back to REST API")
                         return self.get_klines(symbol, interval)
             except Exception as e:
-                # If we get an error about already being subscribed, just continue
-                if "You have already subscribed to this topic" in str(e):
-                    if self.logger:
-                        self.logger.debug(f"Already subscribed to {topic} (from exception)")
-                    # Add to our local tracking
-                    self.ws_callbacks[topic] = None
-                else:
-                    # For other errors, log and return None
-                    self._log_error(e, f"Failed to subscribe to kline data for {symbol} ({interval})")
-                    if self.logger:
-                        self.logger.warning("Falling back to REST API after subscription error")
-                    return self.get_klines(symbol, interval)
+                # For errors, log and return None
+                self._log_error(e, f"Failed to subscribe to kline data for {symbol} ({interval})")
+                if self.logger:
+                    self.logger.warning("Falling back to REST API after subscription error")
+                return self.get_klines(symbol, interval)
 
         # Get data from WebSocket
         with self.ws_lock:
