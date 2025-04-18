@@ -195,8 +195,6 @@ class TradingBot:
                         "MACD": round(main_data.iloc[-1]['macd'], 4),
                         "MACD Signal": round(main_data.iloc[-1]['macd_signal'], 4),
                         "MACD Hist": round(main_data.iloc[-1]['macd_hist'], 4),
-                        "Volume Ratio": round(main_data.iloc[-1]['volume_ratio'], 2),
-                        "OBV Slope": round(main_data.iloc[-1]['obv_slope'], 2),
                         "ATR": round(main_data.iloc[-1]['atr'], 2)
                     }
 

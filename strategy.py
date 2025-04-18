@@ -38,12 +38,6 @@ class Strategy:
         self.macd_signal = config.MACD_SIGNAL
         self.atr_period = config.ATR_PERIOD
 
-        # Volume filter parameters
-        self.volume_ma_period = config.VOLUME_MA_PERIOD
-        self.volume_threshold = config.VOLUME_THRESHOLD
-        self.obv_smoothing = config.OBV_SMOOTHING
-        self.volume_required = config.VOLUME_REQUIRED
-
 
 
         # Multi-timeframe analysis has been removed
@@ -98,17 +92,6 @@ class Strategy:
             # Calculate ATR
             df['atr'] = ta.atr(df['high'], df['low'], df['close'], length=self.atr_period)
 
-            # Calculate Volume Indicators
-            # Volume Moving Average
-            df['volume_ma'] = ta.sma(df['volume'], length=self.volume_ma_period)
-            df['volume_ratio'] = df['volume'] / df['volume_ma']
-
-            # On-Balance Volume (OBV)
-            df['obv'] = ta.obv(df['close'], df['volume'])
-            df['obv_ema'] = ta.ema(df['obv'], length=self.obv_smoothing)
-
-            # Calculate OBV slope (direction)
-            df['obv_slope'] = df['obv_ema'].diff()
 
             # Drop NaN values
             df = df.dropna()
@@ -246,17 +229,6 @@ class Strategy:
                 # Add smaller score based on histogram
                 score += min(max(macd_hist_current * 5, -0.15), 0.15)  # Cap at ±0.15
 
-            # Volume (weight: 0.15)
-            volume_ratio = current['volume_ratio']
-            obv_slope = current['obv_slope']
-
-            # Volume confirmation
-            if volume_ratio > self.volume_threshold:
-                if obv_slope > 0:
-                    score += 0.15
-                elif obv_slope < 0:
-                    score -= 0.15
-
 
 
             # Cap final score between -1.0 and 1.0
@@ -291,7 +263,7 @@ class Strategy:
             return "NONE"
 
         # Check if required indicators are present
-        required_indicators = ['ema_20', 'ema_50', 'rsi', 'macd', 'macd_signal', 'macd_hist', 'volume_ratio', 'obv_slope']
+        required_indicators = ['ema_20', 'ema_50', 'rsi', 'macd', 'macd_signal', 'macd_hist']
         missing_indicators = [ind for ind in required_indicators if ind not in df.columns]
 
         if missing_indicators:
@@ -333,15 +305,6 @@ class Strategy:
             # Check for RSI conditions
             rsi_current = current['rsi']
 
-            # Check for Volume conditions
-            volume_ratio = current['volume_ratio']
-            obv_slope = current['obv_slope']
-
-            # Volume confirmation for long (bullish) signals
-            volume_confirms_bullish = volume_ratio > self.volume_threshold and obv_slope > 0
-
-            # Volume confirmation for short (bearish) signals
-            volume_confirms_bearish = volume_ratio > self.volume_threshold and obv_slope < 0
 
             # Long signal conditions
             ema_crossover_up = fast_ema_previous < slow_ema_previous and fast_ema_current > slow_ema_current
@@ -355,27 +318,11 @@ class Strategy:
 
             # Pattern recognition has been removed
 
-            # Generate signal with volume and pattern confirmation if required
+            # Generate signal based on indicators
             if ema_crossover_up and rsi_not_overbought and macd_positive:
-                # Check volume confirmation
-                volume_confirmed = not self.volume_required or volume_confirms_bullish
-                # Pattern confirmation (always true since pattern recognition is removed)
-                pattern_confirmed = True
-
-                if volume_confirmed and pattern_confirmed:
-                    return "LONG"
-                else:
-                    return "NONE"  # Confirmation failed
+                return "LONG"
             elif ema_crossover_down and rsi_not_oversold and macd_negative:
-                # Check volume confirmation
-                volume_confirmed = not self.volume_required or volume_confirms_bearish
-                # Pattern confirmation (always true since pattern recognition is removed)
-                pattern_confirmed = True
-
-                if volume_confirmed and pattern_confirmed:
-                    return "SHORT"
-                else:
-                    return "NONE"  # Confirmation failed
+                return "SHORT"
             else:
                 return "NONE"
 

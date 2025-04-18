@@ -52,11 +52,7 @@ class TestStrategy(unittest.TestCase):
         df['macd_signal'] = [1, 1, 1, 2, 3, 4, 3, 2, 1, 0]
         df['macd_hist'] = [-1, 0, 1, 1, 1, -1, -1, -1, -1, -1]
         df['atr'] = [5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
-        df['volume_ma'] = [1000, 1050, 1100, 1150, 1200, 1250, 1300, 1350, 1400, 1450]
-        df['volume_ratio'] = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.4, 1.3, 1.2, 1.1]
-        df['obv'] = [1000, 2100, 3300, 4600, 6000, 7500, 8900, 10200, 11400, 12500]
-        df['obv_ema'] = [1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500]
-        df['obv_slope'] = [0, 1, 2, 3, 4, 3, 2, 1, 0, -1]
+
 
 
 
@@ -76,8 +72,7 @@ class TestStrategy(unittest.TestCase):
         # Check that the result has the indicator columns
         indicator_columns = [
             f'ema_{self.strategy.fast_ema}', f'ema_{self.strategy.slow_ema}',
-            'rsi', 'macd', 'macd_signal', 'macd_hist', 'atr',
-            'volume_ma', 'volume_ratio', 'obv', 'obv_ema', 'obv_slope'
+            'rsi', 'macd', 'macd_signal', 'macd_hist', 'atr'
         ]
         for column in indicator_columns:
             self.assertIn(column, result.columns)
@@ -106,8 +101,7 @@ class TestStrategy(unittest.TestCase):
         df['macd'] = [0, 1, 2, 3, 4, 3, 2, 1, 0, -1]
         df['macd_signal'] = [1, 1, 1, 2, 3, 4, 3, 2, 1, 0]
         df['macd_hist'] = [-1, 0, 1, 1, 1, -1, -1, -1, -1, -1]
-        df['volume_ratio'] = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.4, 1.3, 1.2, 1.1]
-        df['obv_slope'] = [0, 1, 2, 3, 4, 3, 2, 1, 0, -1]
+
 
         # Mock the _generate_signal_from_single_timeframe method
         self.strategy._generate_signal_from_single_timeframe = MagicMock(return_value="LONG")
@@ -133,8 +127,7 @@ class TestStrategy(unittest.TestCase):
         df['macd'] = [0, 1, 2, 3, 4, 3, 2, 1, 0, -1]
         df['macd_signal'] = [1, 1, 1, 2, 3, 4, 3, 2, 1, 0]
         df['macd_hist'] = [-1, 0, 1, 1, 1, -1, -1, -1, -1, -1]
-        df['volume_ratio'] = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.4, 1.3, 1.2, 1.1]
-        df['obv_slope'] = [0, 1, 2, 3, 4, 3, 2, 1, 0, -1]
+
 
 
         # Call the method
@@ -159,8 +152,7 @@ class TestStrategy(unittest.TestCase):
         df['macd'] = [0, 1, 2, 3, 4, 3, 2, 1, 0, -1]
         df['macd_signal'] = [1, 1, 1, 2, 3, 4, 3, 2, 1, 0]
         df['macd_hist'] = [-1, 0, 1, 1, 1, -1, -1, -1, -1, -1]
-        df['volume_ratio'] = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.4, 1.3, 1.2, 1.1]
-        df['obv_slope'] = [0, 1, 2, 3, 4, 3, 2, 1, 0, -1]
+
 
         # Mock the generate_signal method
         self.strategy.generate_signal = MagicMock(return_value="SHORT")

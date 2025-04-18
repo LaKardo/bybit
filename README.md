@@ -33,8 +33,7 @@
         <li><b>EMA crossover</b> strategy</li>
         <li><b>RSI</b> for overbought/oversold conditions</li>
         <li><b>MACD</b> for trend confirmation</li>
-        <li><b>Volume analysis</b> for trend strength confirmation</li>
-        <li><b>On-Balance Volume (OBV)</b> for volume trend direction</li>
+
         <li><b>ATR</b> for volatility-based stops</li>
 
 
@@ -152,15 +151,6 @@ MACD_SLOW = 26
 MACD_SIGNAL = 9
 ATR_PERIOD = 14
 
-# Volume Filter Parameters
-VOLUME_MA_PERIOD = 20  # Period for volume moving average
-VOLUME_THRESHOLD = 1.5  # Volume must be this multiple of its MA to confirm trend
-OBV_SMOOTHING = 5  # Smoothing period for On-Balance Volume
-VOLUME_REQUIRED = True  # Whether to require volume confirmation for signals
-
-
-
-```
 
 ### Risk Management
 ```python
@@ -221,15 +211,15 @@ Or if you've configured a different host/port in config.py, use that instead.
 1. Fast EMA(20) crosses **above** Slow EMA(50)
 2. RSI(14) is **below** 70 (not overbought)
 3. MACD histogram is **positive** OR MACD line crosses **above** signal line
-4. **Volume confirmation**: Current volume > 1.5x its 20-period MA AND OBV is trending up
-5. No active short position
+
+4. No active short position
 
 ### Short (Sell) Signal 🔽
 1. Fast EMA(20) crosses **below** Slow EMA(50)
 2. RSI(14) is **above** 30 (not oversold)
 3. MACD histogram is **negative** OR MACD line crosses **below** signal line
-4. **Volume confirmation**: Current volume > 1.5x its 20-period MA AND OBV is trending down
-5. No active long position
+
+4. No active long position
 
 ### Exit Signal 🚪
 1. Stop-Loss or Take-Profit is hit

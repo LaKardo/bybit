@@ -41,12 +41,6 @@ MACD_SLOW = 26
 MACD_SIGNAL = 9
 ATR_PERIOD = 14
 
-# Volume Filter Parameters
-VOLUME_MA_PERIOD = 20  # Period for volume moving average
-VOLUME_THRESHOLD = 1.5  # Volume must be this multiple of its MA to confirm trend
-OBV_SMOOTHING = 5  # Smoothing period for On-Balance Volume
-VOLUME_REQUIRED = True  # Whether to require volume confirmation for signals
-
 
 # Multi-Timeframe Analysis has been removed
 
