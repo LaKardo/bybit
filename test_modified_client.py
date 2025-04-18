@@ -3,7 +3,7 @@ Test script for the modified Bybit API client.
 This script tests the get_klines method of the modified BybitAPIClient.
 """
 
-import pandas as pd
+# pandas is used by the BybitAPIClient
 from bybit_client import BybitAPIClient
 import config
 
@@ -50,23 +50,7 @@ def main():
     else:
         print("Failed to retrieve klines")
 
-    # Test get_klines for confirmation timeframes
-    if config.MULTI_TIMEFRAME_ENABLED:
-        print("\nTesting get_klines for confirmation timeframes...")
-        for tf in config.CONFIRMATION_TIMEFRAMES:
-            print(f"\nTimeframe: {tf}")
-            tf_klines = client.get_klines(
-                symbol=config.SYMBOL,
-                interval=tf,
-                limit=100
-            )
-
-            if tf_klines is not None and not tf_klines.empty:
-                print(f"Successfully retrieved {len(tf_klines)} klines")
-                print(f"First timestamp: {tf_klines.iloc[0]['timestamp']}")
-                print(f"Last timestamp: {tf_klines.iloc[-1]['timestamp']}")
-            else:
-                print("Failed to retrieve klines")
+    # Multi-timeframe analysis has been removed
 
     print("\n" + "=" * 50)
     print("TEST COMPLETED")

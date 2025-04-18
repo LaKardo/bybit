@@ -47,9 +47,7 @@ app.config.update(
     RSI_PERIOD=14,
     RSI_OVERBOUGHT=70,
     RSI_OVERSOLD=30,
-    MULTI_TIMEFRAME_ENABLED=True,
-    CONFIRMATION_TIMEFRAMES=['60', '240'],
-    MTF_ALIGNMENT_REQUIRED=2
+    # Multi-timeframe analysis has been removed
 )
 
 # Initialize login manager

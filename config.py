@@ -48,14 +48,7 @@ OBV_SMOOTHING = 5  # Smoothing period for On-Balance Volume
 VOLUME_REQUIRED = True  # Whether to require volume confirmation for signals
 
 
-# Multi-Timeframe Analysis Parameters
-MULTI_TIMEFRAME_ENABLED = True  # Whether to use multi-timeframe analysis
-CONFIRMATION_TIMEFRAMES = ["15", "360", "D"]  # Timeframes to use for confirmation (Bybit API V5 format)
-MTF_ALIGNMENT_REQUIRED = 2  # Minimum number of timeframes that must align with the signal (including main timeframe)
-MTF_WEIGHT_MAIN = 1.0  # Weight of the main timeframe
-MTF_WEIGHT_LOWER = 0.7  # Weight of lower timeframes (faster)
-MTF_WEIGHT_HIGHER = 1.2  # Weight of higher timeframes (slower)
-MTF_VOLATILITY_ADJUSTMENT = True  # Whether to adjust timeframe weights based on market volatility
+# Multi-Timeframe Analysis has been removed
 
 # Risk Management
 RISK_PER_TRADE = 0.015  # 1.5% of balance per trade

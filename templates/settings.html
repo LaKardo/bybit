@@ -433,37 +433,10 @@
                             <div class="row">
                                 <div class="col-md-12">
                                     <div class="setting-card">
-                                        <h5 class="setting-card-title"><i class="fas fa-layer-group me-2"></i>Multi-Timeframe Analysis</h5>
-                                        <div class="mb-3 form-check form-switch">
-                                            <input type="checkbox" class="form-check-input" id="multi_timeframe_enabled" name="multi_timeframe_enabled" {% if config.MULTI_TIMEFRAME_ENABLED %}checked{% endif %}>
-                                            <label class="form-check-label" for="multi_timeframe_enabled">Enable Multi-Timeframe Analysis</label>
-                                            <div class="form-text">If enabled, the bot will use multiple timeframes for confirmation</div>
-                                        </div>
-
-                                        <div class="mb-3">
-                                            <label for="confirmation_timeframes" class="form-label">Confirmation Timeframes</label>
-                                            <select class="form-select" id="confirmation_timeframes" name="confirmation_timeframes" multiple>
-                                                <option value="1" {% if "1" in config.CONFIRMATION_TIMEFRAMES %}selected{% endif %}>1 Minute</option>
-                                                <option value="3" {% if "3" in config.CONFIRMATION_TIMEFRAMES %}selected{% endif %}>3 Minutes</option>
-                                                <option value="5" {% if "5" in config.CONFIRMATION_TIMEFRAMES %}selected{% endif %}>5 Minutes</option>
-                                                <option value="15" {% if "15" in config.CONFIRMATION_TIMEFRAMES %}selected{% endif %}>15 Minutes</option>
-                                                <option value="30" {% if "30" in config.CONFIRMATION_TIMEFRAMES %}selected{% endif %}>30 Minutes</option>
-                                                <option value="60" {% if "60" in config.CONFIRMATION_TIMEFRAMES %}selected{% endif %}>1 Hour</option>
-                                                <option value="120" {% if "120" in config.CONFIRMATION_TIMEFRAMES %}selected{% endif %}>2 Hours</option>
-                                                <option value="240" {% if "240" in config.CONFIRMATION_TIMEFRAMES %}selected{% endif %}>4 Hours</option>
-                                                <option value="360" {% if "360" in config.CONFIRMATION_TIMEFRAMES %}selected{% endif %}>6 Hours</option>
-                                                <option value="720" {% if "720" in config.CONFIRMATION_TIMEFRAMES %}selected{% endif %}>12 Hours</option>
-                                                <option value="D" {% if "D" in config.CONFIRMATION_TIMEFRAMES %}selected{% endif %}>1 Day</option>
-                                                <option value="W" {% if "W" in config.CONFIRMATION_TIMEFRAMES %}selected{% endif %}>1 Week</option>
-                                                <option value="M" {% if "M" in config.CONFIRMATION_TIMEFRAMES %}selected{% endif %}>1 Month</option>
-                                            </select>
-                                            <div class="form-text">Timeframes to use for confirmation (hold Ctrl to select multiple)</div>
-                                        </div>
-
-                                        <div class="mb-3">
-                                            <label for="mtf_alignment_required" class="form-label">Minimum Timeframe Alignment</label>
-                                            <input type="number" class="form-control" id="mtf_alignment_required" name="mtf_alignment_required" value="{{ config.MTF_ALIGNMENT_REQUIRED }}" min="1" max="10">
-                                            <div class="form-text">Minimum number of timeframes that must align with the signal</div>
+                                        <h5 class="setting-card-title"><i class="fas fa-layer-group me-2"></i>Advanced Settings</h5>
+                                        <div class="alert alert-info">
+                                            <i class="fas fa-info-circle me-2"></i>
+                                            <strong>Note:</strong> Multi-timeframe analysis has been removed from this version.
                                         </div>
                                     </div>
                                 </div>
@@ -531,9 +504,7 @@
                 rsi_period: parseInt($('#rsi_period').val()),
                 rsi_overbought: parseInt($('#rsi_overbought').val()),
                 rsi_oversold: parseInt($('#rsi_oversold').val()),
-                multi_timeframe_enabled: $('#multi_timeframe_enabled').is(':checked'),
-                confirmation_timeframes: $('#confirmation_timeframes').val(),
-                mtf_alignment_required: parseInt($('#mtf_alignment_required').val())
+                // Multi-timeframe analysis has been removed
             };
 
             // Validate form data
@@ -671,8 +642,7 @@
                 $('#rsi_period').val('14');
                 $('#rsi_overbought').val('70');
                 $('#rsi_oversold').val('30');
-                $('#multi_timeframe_enabled').prop('checked', true);
-                $('#mtf_alignment_required').val('2');
+                // Multi-timeframe analysis has been removed
 
                 showToast('Conservative preset loaded', 'info');
             }
@@ -689,8 +659,7 @@
                 $('#rsi_period').val('14');
                 $('#rsi_overbought').val('65');
                 $('#rsi_oversold').val('35');
-                $('#multi_timeframe_enabled').prop('checked', true);
-                $('#mtf_alignment_required').val('2');
+                // Multi-timeframe analysis has been removed
 
                 showToast('Balanced preset loaded', 'info');
             }
@@ -707,7 +676,7 @@
                 $('#rsi_period').val('10');
                 $('#rsi_overbought').val('60');
                 $('#rsi_oversold').val('40');
-                $('#multi_timeframe_enabled').prop('checked', false);
+                // Multi-timeframe analysis has been removed
 
                 showToast('Aggressive preset loaded', 'info');
             }
@@ -729,9 +698,7 @@
                 rsi_period: parseInt($('#rsi_period').val()),
                 rsi_overbought: parseInt($('#rsi_overbought').val()),
                 rsi_oversold: parseInt($('#rsi_oversold').val()),
-                multi_timeframe_enabled: $('#multi_timeframe_enabled').is(':checked'),
-                confirmation_timeframes: $('#confirmation_timeframes').val(),
-                mtf_alignment_required: parseInt($('#mtf_alignment_required').val())
+                // Multi-timeframe analysis has been removed
             };
 
             // Create a blob and download link
@@ -782,9 +749,7 @@
                             if (settings.rsi_period) $('#rsi_period').val(settings.rsi_period);
                             if (settings.rsi_overbought) $('#rsi_overbought').val(settings.rsi_overbought);
                             if (settings.rsi_oversold) $('#rsi_oversold').val(settings.rsi_oversold);
-                            if (settings.multi_timeframe_enabled !== undefined) $('#multi_timeframe_enabled').prop('checked', settings.multi_timeframe_enabled);
-                            if (settings.confirmation_timeframes) $('#confirmation_timeframes').val(settings.confirmation_timeframes);
-                            if (settings.mtf_alignment_required) $('#mtf_alignment_required').val(settings.mtf_alignment_required);
+                            // Multi-timeframe analysis has been removed
 
                             showToast('Settings imported successfully', 'success');
                         } catch (error) {

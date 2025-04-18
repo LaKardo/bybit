@@ -2,7 +2,7 @@
 Test script for the refactored web interface.
 """
 
-import os
+# os module is used for environment variables in a full implementation
 import logging
 from web_app import create_app, socketio
 
@@ -33,9 +33,7 @@ test_config = {
     'RSI_PERIOD': 14,
     'RSI_OVERBOUGHT': 70,
     'RSI_OVERSOLD': 30,
-    'MULTI_TIMEFRAME_ENABLED': True,
-    'CONFIRMATION_TIMEFRAMES': ['60', '240'],
-    'MTF_ALIGNMENT_REQUIRED': 2
+    # Multi-timeframe analysis has been removed
 }
 
 # Create Flask application with test configuration

@@ -3,7 +3,7 @@ Very simple web interface for the Bybit Trading Bot.
 This version has minimal dependencies and is designed to be as simple as possible.
 """
 
-import os
+# os module is used for environment variables in a full implementation
 import logging
 from flask import Flask, render_template, redirect, url_for, flash, request, jsonify, session
 from functools import wraps
@@ -19,8 +19,8 @@ logging.basicConfig(
 )
 
 # Create Flask application
-app = Flask(__name__, 
-            template_folder='templates', 
+app = Flask(__name__,
+            template_folder='templates',
             static_folder='static')
 
 # Configuration
@@ -43,9 +43,7 @@ app.config.update(
     RSI_PERIOD=14,
     RSI_OVERBOUGHT=70,
     RSI_OVERSOLD=30,
-    MULTI_TIMEFRAME_ENABLED=True,
-    CONFIRMATION_TIMEFRAMES=['60', '240'],
-    MTF_ALIGNMENT_REQUIRED=2
+    # Multi-timeframe analysis has been removed
 )
 
 # Simple login required decorator
@@ -93,29 +91,29 @@ def login():
     """Handle login."""
     if 'logged_in' in session:
         return redirect(url_for('index'))
-    
+
     error = None
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
         remember = request.form.get('remember') == 'on'
-        
+
         if username == app.config['WEB_USERNAME'] and password == app.config['WEB_PASSWORD']:
             session['logged_in'] = True
             session['username'] = username
-            
+
             if remember:
                 session.permanent = True
-            
+
             next_page = request.args.get('next')
             if not next_page or not next_page.startswith('/'):
                 next_page = url_for('index')
-            
+
             flash('You have been logged in successfully', 'success')
             return redirect(next_page)
-        
+
         error = 'Invalid username or password'
-    
+
     return render_template('very_simple_login.html', error=error)
 
 @app.route('/logout')
@@ -198,7 +196,7 @@ def get_trade_history():
 def get_market_data():
     """Get market data."""
     import random
-    
+
     # Generate random market data
     timestamps = [1672531200000 + i * 900000 for i in range(100)]  # Starting from 2023-01-01, 15-minute intervals
     open_prices = [random.normalvariate(50000, 1000) for _ in range(100)]
@@ -206,7 +204,7 @@ def get_market_data():
     low_prices = [o - random.normalvariate(500, 100) for o in open_prices]
     close_prices = [o + random.normalvariate(0, 200) for o in open_prices]
     volumes = [random.normalvariate(100, 20) for _ in range(100)]
-    
+
     return jsonify({
         'timestamp': timestamps,
         'open': open_prices,
@@ -280,7 +278,7 @@ if __name__ == '__main__':
     print(f"Starting Very Simple Bybit Trading Bot Web Interface on port {port}...")
     print(f"Access the web interface at http://localhost:{port}")
     print(f"Login with username: {app.config['WEB_USERNAME']} and password: {app.config['WEB_PASSWORD']}")
-    
+
     try:
         app.run(host='0.0.0.0', port=port, debug=True)
     except Exception as e:

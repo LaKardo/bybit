@@ -3,7 +3,7 @@ Order Manager module for the Bybit Trading Bot.
 Handles order placement and management.
 """
 
-import time
+# time module is used in other methods
 import config
 
 class OrderManager:
@@ -355,8 +355,7 @@ class OrderManager:
 
         Args:
             price_data (pandas.DataFrame): Price data with indicators for the main timeframe.
-            mtf_data (dict, optional): Dictionary of DataFrames with indicators for other timeframes.
-                                      Format: {timeframe: dataframe}
+            mtf_data (dict, optional): Not used, kept for backward compatibility.
 
         Returns:
             bool: True if position was exited, False otherwise.
@@ -387,7 +386,7 @@ class OrderManager:
 
                 side = position.get("side")
 
-                # Check if position should be exited using multi-timeframe analysis if available
+                # Check if position should be exited based on opposite signal
                 try:
                     from strategy import Strategy
                     strategy = Strategy(self.logger)
@@ -395,10 +394,7 @@ class OrderManager:
 
                     if should_exit:
                         if self.logger:
-                            if mtf_data:
-                                self.logger.info(f"Exiting {side} position for {self.symbol} based on multi-timeframe opposite signal")
-                            else:
-                                self.logger.info(f"Exiting {side} position for {self.symbol} based on opposite signal")
+                            self.logger.info(f"Exiting {side} position for {self.symbol} based on opposite signal")
 
                         return self.exit_position(reason="OPPOSITE_SIGNAL")
                 except Exception as e:

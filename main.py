@@ -70,9 +70,7 @@ class TradingBot:
         self.check_interval = config.CHECK_INTERVAL
         self.dry_run = config.DRY_RUN
 
-        # Multi-timeframe parameters
-        self.multi_timeframe_enabled = config.MULTI_TIMEFRAME_ENABLED
-        self.confirmation_timeframes = config.CONFIRMATION_TIMEFRAMES
+        # Multi-timeframe analysis has been removed
 
         # WebSocket parameters
         self.use_websocket = config.USE_WEBSOCKET
@@ -100,11 +98,6 @@ class TradingBot:
 
                 # Subscribe to kline data for main timeframe
                 self.bybit_client.subscribe_kline(symbol=self.symbol, interval=self.timeframe)
-
-                # Subscribe to kline data for confirmation timeframes
-                if self.multi_timeframe_enabled:
-                    for tf in self.confirmation_timeframes:
-                        self.bybit_client.subscribe_kline(symbol=self.symbol, interval=tf)
             else:
                 self.logger.error("Failed to start WebSocket connection")
                 self.use_websocket = False
@@ -184,45 +177,13 @@ class TradingBot:
                     time.sleep(self.check_interval)
                     continue
 
-                # Get data for confirmation timeframes if multi-timeframe analysis is enabled
-                mtf_data = {}
-                if self.multi_timeframe_enabled:
-                    self.logger.debug(f"Fetching data for confirmation timeframes: {self.confirmation_timeframes}")
-                    for tf in self.confirmation_timeframes:
-                        # Get data from API
-                        try:
-                            if self.use_websocket:
-                                tf_klines = self.bybit_client.get_realtime_kline(
-                                    symbol=self.symbol,
-                                    interval=tf
-                                )
-                            else:
-                                tf_klines = self.bybit_client.get_klines(
-                                    symbol=self.symbol,
-                                    interval=tf,
-                                    limit=100
-                                )
-                        except Exception as e:
-                            self.logger.error(f"Error getting klines data for {tf} timeframe: {e}")
-                            tf_klines = None
-
-                        if tf_klines is not None and not tf_klines.empty:
-                            tf_data = self.strategy.calculate_indicators(tf_klines)
-                            if tf_data is not None:
-                                mtf_data[tf] = tf_data
-                                self.logger.debug(f"Successfully processed {tf} timeframe data")
-                            else:
-                                self.logger.warning(f"Failed to calculate indicators for {tf} timeframe")
-                        else:
-                            self.logger.warning(f"Failed to get historical data for {tf} timeframe")
-
-                    self.logger.debug(f"Processed {len(mtf_data)} confirmation timeframes")
+                # Multi-timeframe analysis has been removed
 
                 # Check if we should exit current position based on opposite signal
-                self.order_manager.check_and_exit_on_signal(main_data, mtf_data if self.multi_timeframe_enabled else None)
+                self.order_manager.check_and_exit_on_signal(main_data, None)
 
-                # Generate trading signal with multi-timeframe confirmation if enabled
-                signal = self.strategy.generate_signal(main_data, mtf_data if self.multi_timeframe_enabled else None)
+                # Generate trading signal
+                signal = self.strategy.generate_signal(main_data, None)
 
                 # Log signal
                 if signal != "NONE":
@@ -241,10 +202,7 @@ class TradingBot:
 
 
 
-                    # Add multi-timeframe information if available
-                    if self.multi_timeframe_enabled and mtf_data:
-                        indicators["Multi-Timeframe"] = "Enabled"
-                        indicators["Confirmation Timeframes"] = ", ".join(mtf_data.keys())
+                    # Multi-timeframe analysis has been removed
 
                     self.logger.signal(
                         symbol=self.symbol,

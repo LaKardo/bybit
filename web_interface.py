@@ -373,11 +373,7 @@ class WebInterface:
                 if 'rsi_oversold' in data:
                     self.bot.strategy.rsi_oversold = int(data['rsi_oversold'])
 
-                if 'multi_timeframe_enabled' in data:
-                    self.bot.strategy.multi_timeframe_enabled = bool(data['multi_timeframe_enabled'])
-
-                if 'confirmation_timeframes' in data and isinstance(data['confirmation_timeframes'], list):
-                    self.bot.strategy.confirmation_timeframes = data['confirmation_timeframes']
+                # Multi-timeframe analysis has been removed
 
             # Update risk management parameters if risk manager is initialized
             if self.bot.risk_manager is not None:
@@ -538,9 +534,7 @@ class WebInterface:
                 'volume_threshold': strategy.volume_threshold,
                 'atr_period': strategy.atr_period,
                 'obv_smoothing': strategy.obv_smoothing,
-                'multi_timeframe_enabled': strategy.multi_timeframe_enabled,
-                'confirmation_timeframes': strategy.confirmation_timeframes,
-                'mtf_alignment_required': strategy.mtf_alignment_required,
+                # Multi-timeframe analysis has been removed
 
                 'volume_required': strategy.volume_required
             }
@@ -587,9 +581,7 @@ class WebInterface:
                         'rsi_period': strategy.rsi_period,
                         'rsi_overbought': strategy.rsi_overbought,
                         'rsi_oversold': strategy.rsi_oversold,
-                        'multi_timeframe_enabled': strategy.multi_timeframe_enabled,
-                        'confirmation_timeframes': strategy.confirmation_timeframes,
-                        'mtf_alignment_required': strategy.mtf_alignment_required
+                        # Multi-timeframe analysis has been removed
                     }
 
                 return jsonify({

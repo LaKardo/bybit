@@ -46,14 +46,7 @@ class Strategy:
 
 
 
-        # Multi-timeframe analysis parameters
-        self.multi_timeframe_enabled = config.MULTI_TIMEFRAME_ENABLED
-        self.confirmation_timeframes = config.CONFIRMATION_TIMEFRAMES
-        self.mtf_alignment_required = config.MTF_ALIGNMENT_REQUIRED
-        self.mtf_weight_main = config.MTF_WEIGHT_MAIN
-        self.mtf_weight_lower = config.MTF_WEIGHT_LOWER
-        self.mtf_weight_higher = config.MTF_WEIGHT_HIGHER
-        self.mtf_volatility_adjustment = config.MTF_VOLATILITY_ADJUSTMENT
+        # Multi-timeframe analysis has been removed
 
 
 
@@ -145,8 +138,7 @@ class Strategy:
 
         Args:
             df (pandas.DataFrame): Price data with indicators for the main timeframe.
-            mtf_data (dict, optional): Dictionary of DataFrames with indicators for other timeframes.
-                                      Format: {timeframe: dataframe}
+            mtf_data (dict, optional): Not used, kept for backward compatibility.
 
         Returns:
             str: Signal (LONG, SHORT, NONE).
@@ -157,20 +149,8 @@ class Strategy:
             return "NONE"
 
         try:
-            # Use multi-timeframe analysis if enabled and data is available
-            if self.multi_timeframe_enabled and mtf_data is not None:
-                signal, score, timeframe_scores = self.analyze_multi_timeframe(df, mtf_data)
-
-                # Log detailed multi-timeframe analysis results
-                if self.logger and signal != "NONE":
-                    self.logger.info(f"Multi-timeframe signal generated: {signal} (score: {score:.2f})")
-                    for tf, tf_score in timeframe_scores.items():
-                        self.logger.debug(f"  {tf} timeframe score: {tf_score:.2f}")
-
-                return signal
-            else:
-                # Fall back to single timeframe analysis
-                return self._generate_signal_from_single_timeframe(df)
+            # Use single timeframe analysis
+            return self._generate_signal_from_single_timeframe(df)
 
         except Exception as e:
             if self.logger:
@@ -292,78 +272,7 @@ class Strategy:
                 self.logger.error(f"Failed to analyze {timeframe} timeframe: {e}")
             return 0.0
 
-    def analyze_multi_timeframe(self, main_df, mtf_data):
-        """
-        Analyze multiple timeframes and generate a weighted signal score.
-
-        Args:
-            main_df (pandas.DataFrame): Price data with indicators for the main timeframe.
-            mtf_data (dict): Dictionary of DataFrames with indicators for other timeframes.
-                             Format: {timeframe: dataframe}
-
-        Returns:
-            tuple: (signal, score, timeframe_scores)
-                  - signal: 'LONG', 'SHORT', or 'NONE'
-                  - score: Overall weighted score (-1.0 to 1.0)
-                  - timeframe_scores: Dictionary of scores by timeframe
-        """
-        if not self.multi_timeframe_enabled or mtf_data is None:
-            # If multi-timeframe analysis is disabled, use only the main timeframe
-            signal = self._generate_signal_from_single_timeframe(main_df)
-            return signal, 0.0, {}
-
-        try:
-            main_timeframe = config.TIMEFRAME
-            timeframe_scores = {}
-            timeframe_weights = {}
-
-            # Get main timeframe score
-            main_score = self.analyze_timeframe(main_df, main_timeframe)
-            timeframe_scores[main_timeframe] = main_score
-            timeframe_weights[main_timeframe] = self.mtf_weight_main
-
-            # Get scores for other timeframes
-            for timeframe, df in mtf_data.items():
-                if df is not None and not df.empty:
-                    score = self.analyze_timeframe(df, timeframe)
-                    timeframe_scores[timeframe] = score
-
-                    # Assign weight based on timeframe (higher timeframes get more weight)
-                    if self._is_higher_timeframe(timeframe, main_timeframe):
-                        timeframe_weights[timeframe] = self.mtf_weight_higher
-                    else:
-                        timeframe_weights[timeframe] = self.mtf_weight_lower
-
-            # Adjust weights based on volatility if enabled
-            if self.mtf_volatility_adjustment and 'atr' in main_df.columns:
-                self._adjust_weights_by_volatility(timeframe_weights, main_df)
-
-            # Calculate weighted average score
-            total_weight = sum(timeframe_weights.values())
-            weighted_score = sum(score * timeframe_weights[tf] for tf, score in timeframe_scores.items()) / total_weight
-
-            # Count aligned timeframes
-            aligned_bullish = sum(1 for score in timeframe_scores.values() if score > 0.3)
-            aligned_bearish = sum(1 for score in timeframe_scores.values() if score < -0.3)
-
-            # Generate signal based on weighted score and alignment requirement
-            signal = "NONE"
-            if weighted_score > 0.4 and aligned_bullish >= self.mtf_alignment_required:
-                signal = "LONG"
-            elif weighted_score < -0.4 and aligned_bearish >= self.mtf_alignment_required:
-                signal = "SHORT"
-
-            if self.logger:
-                self.logger.info(f"Multi-timeframe analysis - Weighted score: {weighted_score:.2f}, Signal: {signal}")
-                self.logger.debug(f"Timeframe scores: {timeframe_scores}")
-                self.logger.debug(f"Aligned timeframes - Bullish: {aligned_bullish}, Bearish: {aligned_bearish}")
-
-            return signal, weighted_score, timeframe_scores
-
-        except Exception as e:
-            if self.logger:
-                self.logger.error(f"Failed to perform multi-timeframe analysis: {e}")
-            return "NONE", 0.0, {}
+    # Multi-timeframe analysis has been removed
 
     def _generate_signal_from_single_timeframe(self, df):
         """
@@ -475,61 +384,7 @@ class Strategy:
                 self.logger.error(f"Failed to generate signal from single timeframe: {e}")
             return "NONE"
 
-    def _is_higher_timeframe(self, timeframe1, timeframe2):
-        """
-        Check if timeframe1 is higher than timeframe2.
-
-        Args:
-            timeframe1 (str): First timeframe (e.g., '1h', '4h', '1d').
-            timeframe2 (str): Second timeframe (e.g., '1h', '4h', '1d').
-
-        Returns:
-            bool: True if timeframe1 is higher than timeframe2, False otherwise.
-        """
-        # Define timeframe hierarchy (from lowest to highest)
-        hierarchy = {
-            '1m': 1, '3m': 2, '5m': 3, '15m': 4, '30m': 5,
-            '1h': 6, '2h': 7, '4h': 8, '6h': 9, '12h': 10,
-            '1d': 11, '3d': 12, '1w': 13, '1M': 14
-        }
-
-        # Get hierarchy values
-        value1 = hierarchy.get(timeframe1, 0)
-        value2 = hierarchy.get(timeframe2, 0)
-
-        return value1 > value2
-
-    def _adjust_weights_by_volatility(self, weights, df):
-        """
-        Adjust timeframe weights based on market volatility.
-        In high volatility, give more weight to higher timeframes.
-        In low volatility, weights remain balanced.
-
-        Args:
-            weights (dict): Dictionary of timeframe weights to adjust.
-            df (pandas.DataFrame): Price data with ATR indicator.
-        """
-        try:
-            # Calculate volatility using ATR relative to price
-            current_price = df.iloc[-1]['close']
-            current_atr = df.iloc[-1]['atr']
-            volatility_ratio = current_atr / current_price
-
-            # Adjust weights based on volatility
-            # Higher volatility = more weight to higher timeframes
-            if volatility_ratio > 0.03:  # High volatility
-                for tf in weights:
-                    if self._is_higher_timeframe(tf, config.TIMEFRAME):
-                        weights[tf] *= 1.3  # Increase higher timeframe weight
-                    elif tf != config.TIMEFRAME:  # Lower timeframe
-                        weights[tf] *= 0.7  # Decrease lower timeframe weight
-
-            if self.logger:
-                self.logger.debug(f"Adjusted weights by volatility (ratio: {volatility_ratio:.4f}): {weights}")
-
-        except Exception as e:
-            if self.logger:
-                self.logger.error(f"Failed to adjust weights by volatility: {e}")
+    # Multi-timeframe helper methods have been removed
 
     def should_exit_position(self, df, position_side, mtf_data=None):
         """
@@ -538,7 +393,7 @@ class Strategy:
         Args:
             df (pandas.DataFrame): Price data with indicators.
             position_side (str): Current position side (Buy or Sell).
-            mtf_data (dict, optional): Dictionary of DataFrames with indicators for other timeframes.
+            mtf_data (dict, optional): Not used, kept for backward compatibility.
 
         Returns:
             bool: True if position should be exited, False otherwise.
@@ -547,11 +402,8 @@ class Strategy:
             return False
 
         try:
-            # Generate signal using multi-timeframe analysis if enabled and data is available
-            if self.multi_timeframe_enabled and mtf_data is not None:
-                signal, score, _ = self.analyze_multi_timeframe(df, mtf_data)
-            else:
-                signal = self.generate_signal(df)
+            # Generate signal using single timeframe analysis
+            signal = self.generate_signal(df)
 
             # Exit long position on SHORT signal
             if position_side == "Buy" and signal == "SHORT":
