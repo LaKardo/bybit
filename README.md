@@ -36,7 +36,7 @@
         <li><b>Volume analysis</b> for trend strength confirmation</li>
         <li><b>On-Balance Volume (OBV)</b> for volume trend direction</li>
         <li><b>ATR</b> for volatility-based stops</li>
-        <li><b>Candlestick pattern</b> recognition</li>
+
         <li><b>Multi-timeframe analysis</b> for signal confirmation</li>
       </ul>
     </td>
@@ -158,16 +158,6 @@ VOLUME_THRESHOLD = 1.5  # Volume must be this multiple of its MA to confirm tren
 OBV_SMOOTHING = 5  # Smoothing period for On-Balance Volume
 VOLUME_REQUIRED = True  # Whether to require volume confirmation for signals
 
-# Pattern Recognition Parameters
-PATTERN_RECOGNITION_ENABLED = True  # Whether to use candlestick pattern recognition
-PATTERN_STRENGTH_THRESHOLD = 2  # Minimum pattern strength to generate a signal
-PATTERN_CONFIRMATION_REQUIRED = True  # Whether to require pattern confirmation for signals
-
-# Complex Pattern Parameters
-COMPLEX_PATTERNS_ENABLED = True  # Whether to use complex chart patterns (H&S, Double Top/Bottom)
-COMPLEX_PATTERN_MIN_CANDLES = 14  # Minimum number of candles to analyze for complex patterns
-HS_PATTERN_SHOULDER_DIFF_THRESHOLD = 0.1  # Maximum allowed difference between shoulders (10%)
-DOUBLE_PATTERN_LEVEL_THRESHOLD = 0.03  # Maximum allowed difference between tops/bottoms (3%)
 
 # Multi-Timeframe Analysis Parameters
 MULTI_TIMEFRAME_ENABLED = True  # Whether to use multi-timeframe analysis
@@ -239,18 +229,18 @@ Or if you've configured a different host/port in config.py, use that instead.
 2. RSI(14) is **below** 70 (not overbought)
 3. MACD histogram is **positive** OR MACD line crosses **above** signal line
 4. **Volume confirmation**: Current volume > 1.5x its 20-period MA AND OBV is trending up
-5. **Pattern confirmation**: Bullish candlestick pattern(s) with strength >= threshold
-6. **Multi-timeframe confirmation**: Signal is confirmed across multiple timeframes
-7. No active short position
+
+5. **Multi-timeframe confirmation**: Signal is confirmed across multiple timeframes
+6. No active short position
 
 ### Short (Sell) Signal 🔽
 1. Fast EMA(20) crosses **below** Slow EMA(50)
 2. RSI(14) is **above** 30 (not oversold)
 3. MACD histogram is **negative** OR MACD line crosses **below** signal line
 4. **Volume confirmation**: Current volume > 1.5x its 20-period MA AND OBV is trending down
-5. **Pattern confirmation**: Bearish candlestick pattern(s) with strength >= threshold
-6. **Multi-timeframe confirmation**: Signal is confirmed across multiple timeframes
-7. No active long position
+
+5. **Multi-timeframe confirmation**: Signal is confirmed across multiple timeframes
+6. No active long position
 
 ### Exit Signal 🚪
 1. Stop-Loss or Take-Profit is hit
@@ -265,38 +255,7 @@ The bot uses multiple timeframes to confirm trading signals, reducing false sign
 4. **Alignment Requirement**: Minimum number of timeframes that must align
 5. **Volatility Adjustment**: During high volatility, higher timeframes get more weight
 
-### Chart Patterns
 
-#### Simple Candlestick Patterns
-
-##### Bullish Patterns
-- **Hammer**: Small body at the top with a long lower shadow
-- **Bullish Engulfing**: A bullish candle that completely engulfs the previous bearish candle
-- **Bullish Harami**: A small bullish candle contained within the body of the previous larger bearish candle
-- **Tweezer Bottom**: Two candles with the same low, first bearish, second bullish
-- **Morning Star**: Three-candle pattern with a large bearish candle, a small-bodied candle, and a large bullish candle
-- **Three White Soldiers**: Three consecutive bullish candles, each closing higher than the previous
-- **Bullish Marubozu**: A bullish candle with no or very small shadows
-
-##### Bearish Patterns
-- **Shooting Star**: Small body at the bottom with a long upper shadow
-- **Inverted Hammer**: Small body at the bottom with a long upper shadow (appears in a downtrend)
-- **Bearish Engulfing**: A bearish candle that completely engulfs the previous bullish candle
-- **Bearish Harami**: A small bearish candle contained within the body of the previous larger bullish candle
-- **Tweezer Top**: Two candles with the same high, first bullish, second bearish
-- **Evening Star**: Three-candle pattern with a large bullish candle, a small-bodied candle, and a large bearish candle
-- **Three Black Crows**: Three consecutive bearish candles, each closing lower than the previous
-- **Bearish Marubozu**: A bearish candle with no or very small shadows
-
-#### Complex Chart Patterns
-
-##### Bullish Patterns
-- **Inverse Head and Shoulders**: A bullish reversal pattern consisting of three troughs, with the middle trough (head) being lower than the two surrounding troughs (shoulders)
-- **Double Bottom**: A bullish reversal pattern consisting of two troughs at approximately the same price level, with a moderate peak in between
-
-##### Bearish Patterns
-- **Head and Shoulders**: A bearish reversal pattern consisting of three peaks, with the middle peak (head) being higher than the two surrounding peaks (shoulders)
-- **Double Top**: A bearish reversal pattern consisting of two peaks at approximately the same price level, with a moderate trough in between
 
 <div align="center">
 <img src="https://i.imgur.com/waxVImv.png" alt="Colorful Divider" width="600">
@@ -367,7 +326,7 @@ The bot uses multiple timeframes to confirm trading signals, reducing false sign
 ├── config.py              # Configuration parameters
 ├── bybit_client.py        # API client for Bybit
 ├── strategy.py            # Trading strategy implementation
-├── pattern_recognition.py # Candlestick pattern recognition
+
 ├── risk_manager.py        # Risk management and position sizing
 ├── order_manager.py       # Order placement and management
 ├── logger.py              # Logging functionality
@@ -443,15 +402,12 @@ The bot uses multiple timeframes to confirm trading signals, reducing false sign
 - **Performance Optimization**: Reduced memory usage and improved response times
 
 ### Code Quality Improvements (v1.2.0)
-- **Pandas Warnings Fixed**: Updated pattern recognition code to use proper DataFrame indexing
+- **Pandas Warnings Fixed**: Updated code to use proper DataFrame indexing
 - **Error Handling**: Added comprehensive error handling throughout the codebase
 - **Code Documentation**: Improved code comments and documentation
 - **Unit Tests**: Added comprehensive unit tests for key components
 
-### Pattern Recognition Improvements (v1.2.0)
-- **Robust Initialization**: Added proper initialization of pattern columns
-- **Error Handling**: Improved error handling for empty or invalid data
-- **Pattern Strength Calculation**: Enhanced pattern strength calculation with better error handling
+
 
 ### Technical Indicator Improvements (v1.2.0)
 - **Custom MACD Implementation**: Replaced pandas_ta MACD with robust custom implementation

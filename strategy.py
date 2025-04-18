@@ -7,7 +7,6 @@ import pandas as pd
 import numpy as np
 import pandas_ta as ta
 import config
-from pattern_recognition import PatternRecognition
 from bybit_client import BybitAPIClient
 
 class Strategy:
@@ -45,16 +44,7 @@ class Strategy:
         self.obv_smoothing = config.OBV_SMOOTHING
         self.volume_required = config.VOLUME_REQUIRED
 
-        # Pattern recognition parameters
-        self.pattern_recognition_enabled = config.PATTERN_RECOGNITION_ENABLED
-        self.pattern_strength_threshold = config.PATTERN_STRENGTH_THRESHOLD
-        self.pattern_confirmation_required = config.PATTERN_CONFIRMATION_REQUIRED
 
-        # Complex pattern parameters
-        self.complex_patterns_enabled = config.COMPLEX_PATTERNS_ENABLED
-        self.complex_pattern_min_candles = config.COMPLEX_PATTERN_MIN_CANDLES
-        self.hs_pattern_shoulder_diff_threshold = config.HS_PATTERN_SHOULDER_DIFF_THRESHOLD
-        self.double_pattern_level_threshold = config.DOUBLE_PATTERN_LEVEL_THRESHOLD
 
         # Multi-timeframe analysis parameters
         self.multi_timeframe_enabled = config.MULTI_TIMEFRAME_ENABLED
@@ -65,13 +55,7 @@ class Strategy:
         self.mtf_weight_higher = config.MTF_WEIGHT_HIGHER
         self.mtf_volatility_adjustment = config.MTF_VOLATILITY_ADJUSTMENT
 
-        # Initialize pattern recognition module
-        self.pattern_recognition = PatternRecognition(
-            logger=self.logger,
-            complex_patterns_enabled=self.complex_patterns_enabled,
-            hs_shoulder_diff_threshold=self.hs_pattern_shoulder_diff_threshold,
-            double_pattern_level_threshold=self.double_pattern_level_threshold
-        )
+
 
         if self.logger:
             self.logger.info("Strategy initialized")
@@ -136,11 +120,7 @@ class Strategy:
             # Drop NaN values
             df = df.dropna()
 
-            # Detect candlestick patterns if enabled
-            if self.pattern_recognition_enabled:
-                df = self.pattern_recognition.detect_patterns(df)
-                if self.logger:
-                    self.logger.debug("Candlestick patterns detected")
+
 
             if self.logger:
                 self.logger.debug("Indicators calculated successfully")
@@ -297,14 +277,7 @@ class Strategy:
                 elif obv_slope < 0:
                     score -= 0.15
 
-            # Pattern recognition (weight: 0.1)
-            if self.pattern_recognition_enabled and 'bullish_pattern_strength' in current and 'bearish_pattern_strength' in current:
-                bullish_strength = current['bullish_pattern_strength']
-                bearish_strength = current['bearish_pattern_strength']
 
-                # Normalize pattern strength to -0.1 to 0.1 range
-                pattern_score = (bullish_strength - bearish_strength) / 10
-                score += min(max(pattern_score, -0.1), 0.1)  # Cap at ±0.1
 
             # Cap final score between -1.0 and 1.0
             score = min(max(score, -1.0), 1.0)
@@ -471,23 +444,14 @@ class Strategy:
             rsi_not_oversold = rsi_current > self.rsi_oversold
             macd_negative = macd_hist_current < 0 or macd_crossover_down
 
-            # Check for pattern recognition signals if enabled
-            pattern_confirms_bullish = False
-            pattern_confirms_bearish = False
-
-            if self.pattern_recognition_enabled and 'bullish_pattern_strength' in current and 'bearish_pattern_strength' in current:
-                bullish_pattern_strength = current['bullish_pattern_strength']
-                bearish_pattern_strength = current['bearish_pattern_strength']
-
-                pattern_confirms_bullish = bullish_pattern_strength >= self.pattern_strength_threshold
-                pattern_confirms_bearish = bearish_pattern_strength >= self.pattern_strength_threshold
+            # Pattern recognition has been removed
 
             # Generate signal with volume and pattern confirmation if required
             if ema_crossover_up and rsi_not_overbought and macd_positive:
                 # Check volume confirmation
                 volume_confirmed = not self.volume_required or volume_confirms_bullish
-                # Check pattern confirmation
-                pattern_confirmed = not self.pattern_confirmation_required or pattern_confirms_bullish
+                # Pattern confirmation (always true since pattern recognition is removed)
+                pattern_confirmed = True
 
                 if volume_confirmed and pattern_confirmed:
                     return "LONG"
@@ -496,8 +460,8 @@ class Strategy:
             elif ema_crossover_down and rsi_not_oversold and macd_negative:
                 # Check volume confirmation
                 volume_confirmed = not self.volume_required or volume_confirms_bearish
-                # Check pattern confirmation
-                pattern_confirmed = not self.pattern_confirmation_required or pattern_confirms_bearish
+                # Pattern confirmation (always true since pattern recognition is removed)
+                pattern_confirmed = True
 
                 if volume_confirmed and pattern_confirmed:
                     return "SHORT"

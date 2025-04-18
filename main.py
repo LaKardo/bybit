@@ -17,7 +17,7 @@ from bybit_client import BybitAPIClient
 from strategy import Strategy
 from risk_manager import RiskManager
 from order_manager import OrderManager
-from pattern_recognition import PatternRecognition
+
 from web_interface import WebInterface, emit_log, emit_status_update
 
 class TradingBot:
@@ -77,8 +77,7 @@ class TradingBot:
         # WebSocket parameters
         self.use_websocket = config.USE_WEBSOCKET
 
-        # Initialize pattern recognition
-        self.pattern_recognition = PatternRecognition(logger=self.logger)
+
 
         # Set up signal handlers for graceful shutdown
         signal.signal(signal.SIGINT, self.shutdown)
@@ -240,26 +239,7 @@ class TradingBot:
                         "ATR": round(main_data.iloc[-1]['atr'], 2)
                     }
 
-                    # Add pattern information if available
-                    if config.PATTERN_RECOGNITION_ENABLED:
-                        if 'bullish_pattern_strength' in main_data.iloc[-1]:
-                            indicators["Bullish Pattern Strength"] = main_data.iloc[-1]['bullish_pattern_strength']
-                        if 'bearish_pattern_strength' in main_data.iloc[-1]:
-                            indicators["Bearish Pattern Strength"] = main_data.iloc[-1]['bearish_pattern_strength']
 
-                        # Add detected patterns
-                        pattern_columns = ['hammer', 'bullish_engulfing', 'bullish_harami', 'tweezer_bottom',
-                                          'morning_star', 'three_white_soldiers', 'bullish_marubozu',
-                                          'shooting_star', 'inverted_hammer', 'bearish_engulfing', 'bearish_harami',
-                                          'tweezer_top', 'evening_star', 'three_black_crows', 'bearish_marubozu']
-
-                        detected_patterns = []
-                        for pattern in pattern_columns:
-                            if pattern in main_data.iloc[-1] and main_data.iloc[-1][pattern]:
-                                detected_patterns.append(pattern.replace('_', ' ').title())
-
-                        if detected_patterns:
-                            indicators["Detected Patterns"] = ", ".join(detected_patterns)
 
                     # Add multi-timeframe information if available
                     if self.multi_timeframe_enabled and mtf_data:

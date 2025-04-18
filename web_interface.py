@@ -541,9 +541,7 @@ class WebInterface:
                 'multi_timeframe_enabled': strategy.multi_timeframe_enabled,
                 'confirmation_timeframes': strategy.confirmation_timeframes,
                 'mtf_alignment_required': strategy.mtf_alignment_required,
-                'pattern_recognition_enabled': strategy.pattern_recognition_enabled,
-                'pattern_confirmation_required': strategy.pattern_confirmation_required,
-                'pattern_strength_threshold': strategy.pattern_strength_threshold,
+
                 'volume_required': strategy.volume_required
             }
 

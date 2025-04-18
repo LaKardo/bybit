@@ -19,12 +19,8 @@ class TestStrategy(unittest.TestCase):
         # Create a mock logger
         self.mock_logger = MagicMock()
 
-        # Create a mock pattern recognition
-        self.mock_pattern_recognition = MagicMock()
-
-        # Create a strategy instance with the mock logger and pattern recognition
+        # Create a strategy instance with the mock logger
         self.strategy = Strategy(logger=self.mock_logger)
-        self.strategy.pattern_recognition = self.mock_pattern_recognition
 
         # Create a sample DataFrame with OHLCV data
         self.df = pd.DataFrame({
@@ -64,8 +60,7 @@ class TestStrategy(unittest.TestCase):
         df['obv_ema'] = [1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500]
         df['obv_slope'] = [0, 1, 2, 3, 4, 3, 2, 1, 0, -1]
 
-        # Mock the pattern_recognition.detect_patterns method
-        self.mock_pattern_recognition.detect_patterns.return_value = df
+
 
         # Mock the calculate_indicators method to return the prepared DataFrame
         original_method = self.strategy.calculate_indicators
@@ -175,8 +170,7 @@ class TestStrategy(unittest.TestCase):
         df['macd_hist'] = [-1, 0, 1, 1, 1, -1, -1, -1, -1, -1]
         df['volume_ratio'] = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.4, 1.3, 1.2, 1.1]
         df['obv_slope'] = [0, 1, 2, 3, 4, 3, 2, 1, 0, -1]
-        df['bullish_pattern_strength'] = [0, 1, 2, 3, 4, 3, 2, 1, 0, 0]
-        df['bearish_pattern_strength'] = [4, 3, 2, 1, 0, 0, 1, 2, 3, 4]
+
 
         # Call the method
         result = self.strategy.analyze_timeframe(df, "1h")
@@ -201,8 +195,7 @@ class TestStrategy(unittest.TestCase):
         df['volume_ratio'] = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.4, 1.3, 1.2, 1.1]
         df['obv_slope'] = [0, 1, 2, 3, 4, 3, 2, 1, 0, -1]
         df['atr'] = [5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
-        df['bullish_pattern_strength'] = [0, 1, 2, 3, 4, 3, 2, 1, 0, 0]
-        df['bearish_pattern_strength'] = [4, 3, 2, 1, 0, 0, 1, 2, 3, 4]
+
 
         # Create multi-timeframe data
         mtf_data = {

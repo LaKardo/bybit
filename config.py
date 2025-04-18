@@ -47,16 +47,6 @@ VOLUME_THRESHOLD = 1.5  # Volume must be this multiple of its MA to confirm tren
 OBV_SMOOTHING = 5  # Smoothing period for On-Balance Volume
 VOLUME_REQUIRED = True  # Whether to require volume confirmation for signals
 
-# Pattern Recognition Parameters
-PATTERN_RECOGNITION_ENABLED = True  # Whether to use candlestick pattern recognition
-PATTERN_STRENGTH_THRESHOLD = 2  # Minimum pattern strength to generate a signal
-PATTERN_CONFIRMATION_REQUIRED = True  # Whether to require pattern confirmation for signals
-
-# Complex Pattern Parameters
-COMPLEX_PATTERNS_ENABLED = True  # Whether to use complex chart patterns (H&S, Double Top/Bottom)
-COMPLEX_PATTERN_MIN_CANDLES = 14  # Minimum number of candles to analyze for complex patterns
-HS_PATTERN_SHOULDER_DIFF_THRESHOLD = 0.1  # Maximum allowed difference between shoulders (10%)
-DOUBLE_PATTERN_LEVEL_THRESHOLD = 0.03  # Maximum allowed difference between tops/bottoms (3%)
 
 # Multi-Timeframe Analysis Parameters
 MULTI_TIMEFRAME_ENABLED = True  # Whether to use multi-timeframe analysis
